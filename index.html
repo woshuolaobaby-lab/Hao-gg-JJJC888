@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基金监控面板 v3.1</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0d1117; color:#e6edf3; font-family:"Microsoft YaHei","PingFang SC",sans-serif; font-size:14px; }
+  .up { color:#ff4d4f; } .down { color:#00c853; } .flat { color:#8b949e; }
+  header { display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:14px 20px; background:#161b22; border-bottom:1px solid #30363d; position:sticky; top:0; z-index:50; }
+  header h1 { font-size:18px; font-weight:700; white-space:nowrap; }
+  header h1 span { color:#58a6ff; }
+  .env-badge { padding:4px 12px; border-radius:20px; font-size:13px; font-weight:600; }
+  .env-bull { background:rgba(255,77,79,.15); color:#ff4d4f; border:1px solid #ff4d4f55; }
+  .env-bear { background:rgba(0,200,83,.12); color:#00c853; border:1px solid #00c85355; }
+  .env-shake { background:rgba(255,204,0,.12); color:#ffcc00; border:1px solid #ffcc0055; }
+  .env-unknown { background:#21262d; color:#8b949e; border:1px solid #30363d; }
+  .head-info { color:#8b949e; font-size:12px; }
+  .btn { background:#238636; color:#fff; border:none; padding:7px 18px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600; }
+  .btn:disabled { background:#21262d; color:#8b949e; cursor:not-allowed; }
+  .auto-wrap { display:flex; align-items:center; gap:6px; color:#8b949e; font-size:12px; cursor:pointer; user-select:none; }
+  .progress-wrap { width:100%; height:3px; background:#21262d; }
+  .progress-bar { height:100%; width:0%; background:linear-gradient(90deg,#1f6feb,#58a6ff); transition:width .2s; }
+  .container { padding:16px 20px 40px; max-width:1600px; margin:0 auto; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
+  .card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:14px 16px; }
+  .card .label { color:#8b949e; font-size:12px; margin-bottom:6px; }
+  .card .value { font-size:24px; font-weight:700; }
+  .card .sub { color:#8b949e; font-size:11px; margin-top:4px; }
+  .charts-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:12px; margin-bottom:16px; }
+  .panel { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:12px; }
+  .panel h3 { font-size:14px; margin-bottom:8px; color:#e6edf3; }
+  .panel h3 small { color:#8b949e; font-weight:400; margin-left:6px; font-size:11px; }
+  .chart { width:100%; height:300px; }
+  .toplist { font-size:12px; line-height:1.9; }
+  .toplist .sec { color:#58a6ff; font-weight:700; margin-top:6px; }
+  .toplist .item { display:flex; justify-content:space-between; gap:8px; border-bottom:1px dashed #21262d; padding:2px 0; cursor:pointer; }
+  .toplist .item:hover { background:#21262d; }
+  .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+  .filters select,.filters input { background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:6px 10px; font-size:13px; outline:none; }
+  .filters input { width:150px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  .table-wrap { max-height:65vh; overflow:auto; border-radius:0 0 8px 8px; }
+  thead th { background:#0d1117; color:#8b949e; padding:9px 8px; text-align:right; font-weight:600; border-bottom:2px solid #30363d; position:sticky; top:0; z-index:10; white-space:nowrap; box-shadow:0 2px 4px rgba(0,0,0,.5); }
+  thead th.l, td.l { text-align:left; }
+  th.sortable { cursor:pointer; user-select:none; }
+  th.sortable:hover { color:#e6edf3; }
+  tbody td { padding:8px; text-align:right; border-bottom:1px solid #21262d; white-space:nowrap; }
+  tbody tr { cursor:pointer; }
+  tbody tr:hover { background:#1c2128; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .tag-buy { background:rgba(255,77,79,.18); color:#ff6b6d; }
+  .tag-sell { background:rgba(0,200,83,.15); color:#2ee67a; }
+  .tag-hold { background:rgba(255,204,0,.12); color:#ffcc00; }
+  .tag-watch { background:#21262d; color:#8b949e; }
+  .tag-long { background:rgba(88,166,255,.15); color:#58a6ff; }
+  .tag-pred { background:rgba(210,153,34,.15); color:#e3b341; }
+  .fname { font-weight:600; }
+  .fcode { color:#8b949e; font-size:11px; }
+  .fail-row td { color:#6e7681; }
+  /* 详情抽屉 */
+  .drawer-mask { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:90; display:none; }
+  .drawer { position:fixed; top:0; right:-560px; width:540px; max-width:95vw; height:100vh; background:#161b22; border-left:1px solid #30363d; z-index:100; transition:right .25s; overflow-y:auto; padding:18px; }
+  .drawer.open { right:0; }
+  .drawer-mask.open { display:block; }
+  .drawer h2 { font-size:17px; margin-bottom:2px; }
+  .drawer .close { position:absolute; top:14px; right:16px; background:none; border:none; color:#8b949e; font-size:20px; cursor:pointer; }
+  .kv { display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; margin:12px 0; font-size:13px; }
+  .kv div { background:#0d1117; border:1px solid #21262d; border-radius:6px; padding:7px 10px; }
+  .kv span { color:#8b949e; margin-right:6px; font-size:12px; }
+  .advice-box { background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:12px; margin:10px 0; font-size:13px; line-height:1.8; }
+  .score-detail { font-size:12px; color:#8b949e; line-height:1.9; }
+  .score-detail b { color:#e6edf3; }
+  #dchart { width:100%; height:260px; margin-top:8px; }
+  .foot { color:#6e7681; font-size:11px; text-align:center; margin-top:24px; line-height:1.8; }
+  .verify-ok { color:#2ee67a; } .verify-bad { color:#ff6b6d; }
+  @media (max-width:700px){ .kv{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>基金监控面板 <span>v3.1 网页版</span></h1>
+  <span id="envBadge" class="env-badge env-unknown">大盘环境: 加载中…</span>
+  <span class="head-info" id="updateTime"></span>
+  <span class="head-info" id="loadStatus"></span>
+  <span style="flex:1"></span>
+  <label class="auto-wrap"><input type="checkbox" id="autoRefresh"> 15分钟自动刷新</label>
+  <button class="btn" id="refreshBtn">刷新数据</button>
+</header>
+<div class="progress-wrap"><div class="progress-bar" id="pbar"></div></div>
+
+<div class="container">
+  <div class="cards">
+    <div class="card"><div class="label">监测基金</div><div class="value" id="cTotal">-</div><div class="sub" id="cTotalSub">11 个板块</div></div>
+    <div class="card"><div class="label">买入信号</div><div class="value up" id="cBuy">-</div><div class="sub">强烈买入 / 买入 / 加仓 / 补仓</div></div>
+    <div class="card"><div class="label">卖出信号</div><div class="value down" id="cSell">-</div><div class="sub">清仓 / 减仓 / 止盈</div></div>
+    <div class="card"><div class="label">预判金叉</div><div class="value" style="color:#e3b341" id="cPred">-</div><div class="sub">可15:00前小额预埋</div></div>
+    <div class="card"><div class="label">金叉预判准确率</div><div class="value" style="color:#58a6ff" id="cAcc">-</div><div class="sub" id="cAccSub">运行几天后自动累积</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="panel"><h3>机会矩阵<small>左=超跌 上=强势 · <span style="color:#00e676">● 看好</span> <span style="color:#ffa726">● 谨慎</span> · ▲买入信号 ▼卖出信号</small></h3><div id="chMatrix" class="chart"></div></div>
+    <div class="panel"><h3>板块轮动热力<small>平均趋势强度</small></h3><div id="chSector" class="chart"></div></div>
+    <div class="panel"><h3>今日操作重点<small>点击可查看详情</small></h3><div class="toplist" id="topList">加载中…</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="panel"><h3>预判准确率统计<small>金叉 / 死叉预判验证</small></h3><div id="chPred" class="chart" style="height:220px"></div></div>
+    <div class="panel" style="grid-column:span 2; min-width:0"><h3>全部基金信号总表<small>共115只 · 点击行查看K线详情 · 点击表头排序</small></h3>
+      <div class="filters">
+        <select id="fSector"><option value="">全部板块</option></select>
+        <select id="fAdvice"><option value="">全部建议</option></select>
+        <select id="fLong"><option value="">看好+谨慎</option><option value="看好">仅看好</option><option value="谨慎">仅谨慎</option></select>
+        <input id="fSearch" placeholder="搜索名称/代码">
+        <label class="auto-wrap"><input type="checkbox" id="fSignal"> 只看有信号</label>
+        <span class="head-info" id="fCount"></span>
+      </div>
+      <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th class="l">名称</th><th class="l">板块</th>
+          <th class="sortable" data-k="净值">净值</th>
+          <th class="sortable" data-k="涨跌">涨跌%</th>
+          <th class="sortable" data-k="RSI">RSI</th>
+          <th class="l">MACD</th>
+          <th class="sortable" data-k="趋势强度">趋势</th>
+          <th class="sortable" data-k="距低点">距低点%</th>
+          <th class="sortable" data-k="净评分">净评分 ⇅</th>
+          <th class="l">预判</th><th class="l">建议</th><th class="l">仓位</th>
+        </tr></thead>
+        <tbody id="tbody"><tr><td colspan="12" style="text-align:center;color:#8b949e;padding:30px">正在加载数据…</td></tr></tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    数据来源: 天天基金(东方财富) · 净值与指标每日收盘后更新 · 「预判」用于提前一天发现机会<br>
+    监测标准: 加权评分 + MACD/RSI + 金叉预判 + 大盘环境加成 + 仓位管理(与 fund.py v3.1 完全一致) · 本面板仅供参考，不构成投资建议
+  </div>
+</div>
+
+<div class="drawer-mask" id="dmask"></div>
+<div class="drawer" id="drawer"></div>
+<script>
+"use strict";
+/* ================= 基金档案（与 fund.py 完全一致，115只） ================= */
+const FUNDS = [{"code": "001549", "name": "天弘上证50ETF", "sector": "宽基", "long": "谨慎"}, {"code": "530000", "name": "天弘上证50场内", "sector": "宽基", "long": "看好"}, {"code": "006021", "name": "广发沪深300", "sector": "宽基", "long": "谨慎"}, {"code": "510300", "name": "沪深300ETF", "sector": "宽基", "long": "看好"}, {"code": "011609", "name": "易方达科创50", "sector": "宽基", "long": "谨慎"}, {"code": "588080", "name": "科创50场内", "sector": "宽基", "long": "看好"}, {"code": "019817", "name": "广发创业板ETF", "sector": "宽基", "long": "谨慎"}, {"code": "159952", "name": "创业板场内", "sector": "宽基", "long": "看好"}, {"code": "588000", "name": "科创50ETF华夏", "sector": "宽基", "long": "看好"}, {"code": "013305", "name": "科创创业50", "sector": "宽基", "long": "看好"}, {"code": "020465", "name": "招商半导体", "sector": "科技", "long": "看好"}, {"code": "561980", "name": "半导体设备ETF", "sector": "科技", "long": "看好"}, {"code": "020482", "name": "机器人", "sector": "科技", "long": "看好"}, {"code": "560770", "name": "机器人ETF", "sector": "科技", "long": "看好"}, {"code": "020900", "name": "通信设备", "sector": "科技", "long": "看好"}, {"code": "515880", "name": "通信ETF", "sector": "科技", "long": "看好"}, {"code": "024195", "name": "卫星", "sector": "科技", "long": "看好"}, {"code": "159206", "name": "卫星ETF", "sector": "科技", "long": "看好"}, {"code": "012734", "name": "人工智能", "sector": "科技", "long": "看好"}, {"code": "006503", "name": "集成电路", "sector": "科技", "long": "看好"}, {"code": "001072", "name": "智能装备", "sector": "科技", "long": "看好"}, {"code": "022364", "name": "永赢科技", "sector": "科技", "long": "看好"}, {"code": "019830", "name": "数字产业", "sector": "科技", "long": "看好"}, {"code": "016664", "name": "高端制造", "sector": "科技", "long": "看好"}, {"code": "008989", "name": "科技创新", "sector": "科技", "long": "看好"}, {"code": "009049", "name": "易方达高端", "sector": "科技", "long": "看好"}, {"code": "159852", "name": "软件服务ETF", "sector": "科技", "long": "看好"}, {"code": "012621", "name": "软件服务场内", "sector": "科技", "long": "看好"}, {"code": "002170", "name": "东吴移动", "sector": "科技", "long": "看好"}, {"code": "017877", "name": "新能源", "sector": "新能源", "long": "看好"}, {"code": "018926", "name": "电池", "sector": "新能源", "long": "看好"}, {"code": "019875", "name": "稀有金属", "sector": "新能源", "long": "看好"}, {"code": "001410", "name": "信澳新能源", "sector": "新能源", "long": "看好"}, {"code": "161028", "name": "新能源汽车", "sector": "新能源", "long": "看好"}, {"code": "501226", "name": "全球新能源", "sector": "新能源", "long": "看好"}, {"code": "019058", "name": "绿色电力", "sector": "新能源", "long": "看好"}, {"code": "260112", "name": "基建能源", "sector": "新能源", "long": "看好"}, {"code": "013817", "name": "光伏", "sector": "新能源", "long": "看好"}, {"code": "516290", "name": "光伏场内", "sector": "新能源", "long": "看好"}, {"code": "159755", "name": "电池ETF", "sector": "新能源", "long": "看好"}, {"code": "159608", "name": "稀有金属ETF", "sector": "新能源", "long": "看好"}, {"code": "159611", "name": "电力ETF", "sector": "新能源", "long": "看好"}, {"code": "016185", "name": "电力公用", "sector": "新能源", "long": "谨慎"}, {"code": "006113", "name": "创新药", "sector": "医药", "long": "看好"}, {"code": "501009", "name": "生物科技", "sector": "医药", "long": "看好"}, {"code": "159892", "name": "恒生医药ETF", "sector": "医药", "long": "看好"}, {"code": "015945", "name": "国防军工", "sector": "军工", "long": "看好"}, {"code": "512560", "name": "军工ETF", "sector": "军工", "long": "看好"}, {"code": "025732", "name": "航天航空", "sector": "军工", "long": "看好"}, {"code": "161725", "name": "白酒", "sector": "消费", "long": "谨慎"}, {"code": "000083", "name": "消费行业", "sector": "消费", "long": "谨慎"}, {"code": "012857", "name": "主要消费", "sector": "消费", "long": "谨慎"}, {"code": "159928", "name": "消费场内", "sector": "消费", "long": "谨慎"}, {"code": "560880", "name": "家电场内", "sector": "消费", "long": "看好"}, {"code": "015040", "name": "食品饮料", "sector": "消费", "long": "谨慎"}, {"code": "159736", "name": "食品饮料场内", "sector": "消费", "long": "谨慎"}, {"code": "512690", "name": "酒ETF", "sector": "消费", "long": "谨慎"}, {"code": "005064", "name": "家用电器", "sector": "消费", "long": "谨慎"}, {"code": "159732", "name": "消费电子ETF", "sector": "消费", "long": "看好"}, {"code": "001469", "name": "金融地产", "sector": "金融", "long": "谨慎"}, {"code": "159940", "name": "金融地产场内", "sector": "金融", "long": "谨慎"}, {"code": "012874", "name": "证券指数", "sector": "金融", "long": "谨慎"}, {"code": "005663", "name": "金融精选", "sector": "金融", "long": "谨慎"}, {"code": "161029", "name": "银行指数", "sector": "金融", "long": "谨慎"}, {"code": "006697", "name": "华宝银行", "sector": "金融", "long": "谨慎"}, {"code": "512800", "name": "银行场内", "sector": "金融", "long": "谨慎"}, {"code": "512880", "name": "证券ETF", "sector": "金融", "long": "谨慎"}, {"code": "015896", "name": "化工指数", "sector": "周期", "long": "谨慎"}, {"code": "159870", "name": "化工ETF", "sector": "周期", "long": "谨慎"}, {"code": "005224", "name": "基建工程", "sector": "周期", "long": "谨慎"}, {"code": "516970", "name": "基建场内", "sector": "周期", "long": "谨慎"}, {"code": "014415", "name": "畜牧养殖", "sector": "周期", "long": "谨慎"}, {"code": "516670", "name": "畜牧场内", "sector": "周期", "long": "谨慎"}, {"code": "010770", "name": "天弘农业", "sector": "周期", "long": "谨慎"}, {"code": "512620", "name": "农业场内", "sector": "周期", "long": "谨慎"}, {"code": "008190", "name": "钢铁", "sector": "周期", "long": "谨慎"}, {"code": "515210", "name": "钢铁场内", "sector": "周期", "long": "谨慎"}, {"code": "008280", "name": "煤炭", "sector": "周期", "long": "谨慎"}, {"code": "515220", "name": "煤炭场内", "sector": "周期", "long": "谨慎"}, {"code": "008987", "name": "上海金", "sector": "周期", "long": "谨慎"}, {"code": "518600", "name": "金场内", "sector": "周期", "long": "谨慎"}, {"code": "165520", "name": "800有色", "sector": "周期", "long": "谨慎"}, {"code": "018853", "name": "标普石油", "sector": "周期", "long": "谨慎"}, {"code": "100039", "name": "通胀通缩", "sector": "周期", "long": "谨慎"}, {"code": "270023", "name": "全球精选", "sector": "海外", "long": "看好"}, {"code": "017731", "name": "全球产业升级", "sector": "海外", "long": "看好"}, {"code": "005698", "name": "全球科技先锋", "sector": "海外", "long": "看好"}, {"code": "018230", "name": "全球优质企业", "sector": "海外", "long": "看好"}, {"code": "100055", "name": "全球科技互联网", "sector": "海外", "long": "看好"}, {"code": "016702", "name": "海外量化", "sector": "海外", "long": "看好"}, {"code": "000043", "name": "美国成长", "sector": "海外", "long": "看好"}, {"code": "040046", "name": "纳斯达克", "sector": "海外", "long": "看好"}, {"code": "006479", "name": "广发纳斯达克", "sector": "海外", "long": "看好"}, {"code": "018147", "name": "新兴市场", "sector": "海外", "long": "看好"}, {"code": "008254", "name": "华宝致远", "sector": "海外", "long": "谨慎"}, {"code": "006328", "name": "中概互联网", "sector": "海外", "long": "看好"}, {"code": "513050", "name": "中概互联网ETF", "sector": "海外", "long": "看好"}, {"code": "000979", "name": "港股深", "sector": "海外", "long": "谨慎"}, {"code": "005555", "name": "恒生国企ETF", "sector": "海外", "long": "谨慎"}, {"code": "159954", "name": "恒生国企场内", "sector": "海外", "long": "谨慎"}, {"code": "013402", "name": "恒生科技", "sector": "海外", "long": "看好"}, {"code": "012769", "name": "动漫游戏", "sector": "文娱", "long": "谨慎"}, {"code": "159869", "name": "动漫游戏场内", "sector": "文娱", "long": "谨慎"}, {"code": "004753", "name": "传媒", "sector": "文娱", "long": "谨慎"}, {"code": "512980", "name": "传媒场内", "sector": "文娱", "long": "谨慎"}, {"code": "000390", "name": "华商优势", "sector": "主动混合", "long": "谨慎"}, {"code": "166301", "name": "华商新趋势", "sector": "主动混合", "long": "谨慎"}, {"code": "720001", "name": "财通价值动量", "sector": "主动混合", "long": "谨慎"}, {"code": "001170", "name": "宏利复兴", "sector": "主动混合", "long": "谨慎"}, {"code": "001412", "name": "德邦鑫星", "sector": "主动混合", "long": "谨慎"}, {"code": "001438", "name": "瑞享灵活", "sector": "主动混合", "long": "谨慎"}, {"code": "001048", "name": "新兴产业", "sector": "主动混合", "long": "谨慎"}, {"code": "025942", "name": "广发新动力", "sector": "主动混合", "long": "谨慎"}, {"code": "002163", "name": "东方惠新", "sector": "主动混合", "long": "谨慎"}, {"code": "001194", "name": "稳健回报", "sector": "主动混合", "long": "谨慎"}];
+
+/* ================= 数据加载（script 标签方式，无跨域问题） ================= */
+const FUND_GLOBALS = ["Data_netWorthTrend","Data_ACWorthTrend","fS_name","fS_code","fund_sourceRate","fund_Rate","fund_minsg","stockCodes","zqCodes","stockCodesNew","Data_fluctuationScale","Data_holderStructure","Data_assetAllocation","Data_performanceEvaluation","Data_rateInSimilarType","Data_rateInSimilarPersent","Data_currentFundManager","Data_buySedemption","syl_1n","syl_6y","syl_3y","syl_1y","Data_grandTotal","ishb"];
+
+function cleanGlobals(){ FUND_GLOBALS.forEach(k=>{ try{ delete window[k]; }catch(e){ window[k]=undefined; } }); }
+
+function loadFund(code, retries=2){
+  return new Promise((resolve)=>{
+    let attempt = 0;
+    function tryLoad(){
+      attempt++;
+      cleanGlobals();
+      const s = document.createElement("script");
+      const timer = setTimeout(()=>{ s.remove(); cleanup(); fail("请求超时"); }, 20000);
+      s.src = `https://fund.eastmoney.com/pingzhongdata/${code}.js?t=${Date.now()}`;
+      s.onload = ()=>{
+        clearTimeout(timer);
+        const trend = window.Data_netWorthTrend;
+        const name = window.fS_name;
+        s.remove();
+        if(!trend || !trend.length){
+          cleanGlobals();
+          return fail("数据获取失败");
+        }
+        const vals = trend.map(d=>parseFloat(d.y)).filter(v=>!isNaN(v));
+        const ts = trend.map(d=>d.x);
+        cleanGlobals();
+        if(vals.length < 62) return fail("数据不足");
+        resolve({ code, name: name||code, vals, ts });
+      };
+      s.onerror = ()=>{ clearTimeout(timer); s.remove(); cleanGlobals(); fail("网络错误"); };
+      document.head.appendChild(s);
+    }
+    function fail(msg){
+      if(attempt <= retries){ setTimeout(tryLoad, 600 + Math.random()*800); }
+      else resolve({ code, error: msg });
+    }
+    function cleanup(){ cleanGlobals(); }
+    tryLoad();
+  });
+}
+
+/* ================= 技术指标（与 fund.py 逐行对应） ================= */
+function calcMACD(vals){
+  if(vals.length < 35) return {状态:"数据不足", 金叉:false, 死叉:false};
+  const ema12=[vals[0]], ema26=[vals[0]];
+  for(let i=1;i<vals.length;i++){
+    ema12.push(ema12[i-1]*11/13 + vals[i]*2/13);
+    ema26.push(ema26[i-1]*25/27 + vals[i]*2/27);
+  }
+  const dif = vals.map((v,i)=>ema12[i]-ema26[i]);
+  const dea=[dif[0]];
+  for(let i=1;i<dif.length;i++) dea.push(dea[i-1]*8/10 + dif[i]*2/10);
+  const n = vals.length-1;
+  const 金叉 = dif[n]>dea[n] && dif[n-1]<=dea[n-1];
+  const 死叉 = dif[n]<dea[n] && dif[n-1]>=dea[n-1];
+  let 状态;
+  if(金叉) 状态="金叉"; else if(死叉) 状态="死叉";
+  else 状态 = dif[n]>0 ? "零轴上" : "零轴下";
+  return {状态, 金叉, 死叉};
+}
+
+function calcRSI(vals, period=14){
+  if(vals.length < period+1) return 50;
+  const chg = [];
+  for(let i=1;i<vals.length;i++) chg.push(vals[i]-vals[i-1]);
+  const recent = chg.slice(-period);
+  const up = recent.filter(x=>x>0).reduce((a,b)=>a+b,0)/period;
+  const dn = recent.filter(x=>x<0).reduce((a,b)=>a+Math.abs(b),0)/period;
+  if(dn===0) return 100;
+  return 100 - (100/(1+up/dn));
+}
+
+const ma = (vals,n,end=vals.length)=> vals.slice(end-n,end).reduce((a,b)=>a+b,0)/n;
+</script>
+<script>
+"use strict";
+/* ================= 预判记录（localStorage 持久化，逻辑同 fund.py，修复同日重复计数） ================= */
+const PRED_KEY = "fund_prediction_log";
+function loadPred(){
+  try{ const d = JSON.parse(localStorage.getItem(PRED_KEY)); if(d && d.记录 && d.统计) return d; }catch(e){}
+  return {记录:{}, 统计:{"即将金叉":{正确:0,失误:0,总计:0}, "即将死叉":{正确:0,失误:0,总计:0}}};
+}
+function savePred(d){ localStorage.setItem(PRED_KEY, JSON.stringify(d)); }
+
+/* ================= 核心分析（与 fund.py 分析基金 完全一致） ================= */
+function analyzeFund(code, vals, ts, predData, marketFactor, profile){
+  const 当前净值 = vals[vals.length-1], 昨日净值 = vals[vals.length-2], 前日净值 = vals[vals.length-3];
+  const 日涨跌 = (当前净值-昨日净值)/昨日净值*100;
+  const 昨日涨跌 = (昨日净值-前日净值)/前日净值*100;
+
+  const MA5=ma(vals,5), MA10=ma(vals,10), MA20=ma(vals,20), MA60=ma(vals,60);
+  const 昨日MA5=ma(vals,5,vals.length-1), 昨日MA10=ma(vals,10,vals.length-1);
+
+  const 金叉 = MA5>MA10 && 昨日MA5<=昨日MA10;
+  const 死叉 = MA5<MA10 && 昨日MA5>=昨日MA10;
+  const 多头排列 = 当前净值>MA5 && MA5>MA10 && MA10>MA20;
+  const 空头排列 = 当前净值<MA5 && MA5<MA10 && MA10<MA20;
+
+  const macd = calcMACD(vals);
+  const RSI = calcRSI(vals);
+
+  let 趋势强度;
+  if(多头排列) 趋势强度=3;
+  else if(空头排列) 趋势强度=-3;
+  else if(当前净值<MA5 && MA5<MA10) 趋势强度=-2;
+  else if(当前净值>MA5 && MA5<MA10) 趋势强度=1;
+  else if(当前净值>MA5 && MA5>MA10 && MA10<MA20) 趋势强度=2;
+  else 趋势强度=0;
+
+  const last60 = vals.slice(-60);
+  const 近60日高点 = Math.max(...last60), 近60日低点 = Math.min(...last60);
+  const 距高点 = (当前净值-近60日高点)/近60日高点*100;
+  const 距低点 = (当前净值-近60日低点)/近60日低点*100;
+
+  const chgList = [];
+  for(let i=1;i<vals.length;i++) chgList.push((vals[i]-vals[i-1])/vals[i-1]*100);
+  const 当前涨跌 = chgList[chgList.length-1];
+  const 近20日波动 = chgList.slice(-20).map(Math.abs);
+  const 平均波动 = 近20日波动.length ? 近20日波动.reduce((a,b)=>a+b,0)/近20日波动.length : 1;
+  const 大阳线 = 当前涨跌>0 && Math.abs(当前涨跌)>平均波动*1.5;
+  const 大阴线 = 当前涨跌<0 && Math.abs(当前涨跌)>平均波动*1.5;
+  const 放量 = Math.abs(当前涨跌) > chgList.slice(-5).reduce((a,b)=>a+Math.abs(b),0)/5*1.5;
+
+  /* 预判系统 */
+  const 均线差 = MA5-MA10, 昨日均线差 = 昨日MA5-昨日MA10;
+  const 收敛速度 = (昨日均线差<0 && 均线差<0) ? Math.abs(昨日均线差)-Math.abs(均线差) : 0;
+  let 预判金叉=false, 预判金叉天数=null;
+  if(均线差<0 && 昨日均线差<0 && 收敛速度>0){
+    const 预计 = 收敛速度>0.00001 ? Math.abs(均线差)/收敛速度 : 999;
+    if(预计<=2){ 预判金叉=true; 预判金叉天数=Math.round(预计*10)/10; }
+  }
+  /* 死叉预判（与金叉对称） */
+  const 收敛速度S = (昨日均线差>0 && 均线差>0) ? Math.abs(昨日均线差)-Math.abs(均线差) : 0;
+  let 预判死叉=false, 预判死叉天数=null;
+  if(均线差>0 && 昨日均线差>0 && 收敛速度S>0){
+    const 预计 = 收敛速度S>0.00001 ? Math.abs(均线差)/收敛速度S : 999;
+    if(预计<=2){ 预判死叉=true; 预判死叉天数=Math.round(预计*10)/10; }
+  }
+
+  let 验证结果="", 预判准确率="";
+  const today = new Date();
+  const todayStr = today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+  const rec = predData.记录[code];
+  if(rec && rec.date < todayStr){
+    const key = rec.预判;
+    const st = predData.统计[key];
+    const hit = (key==="即将金叉" && 金叉) || (key==="即将死叉" && 死叉);
+    st.总计++;
+    if(hit){ st.正确++; 验证结果 = `预判正确(${key==="即将金叉"?"金叉":"死叉"}已确认)`; }
+    else { st.失误++; 验证结果 = `预判失误(未形成${key==="即将金叉"?"金叉":"死叉"})`; }
+    预判准确率 = `${key}准确率 ${(st.正确/st.总计*100).toFixed(0)}%(${st.正确}/${st.总计})`;
+    delete predData.记录[code];
+  }
+  if(预判金叉) predData.记录[code] = {date:todayStr, 预判:"即将金叉", 均线差:均线差};
+  else if(预判死叉) predData.记录[code] = {date:todayStr, 预判:"即将死叉", 均线差:均线差};
+
+  /* 加权评分 */
+  let 买入评分=0, 卖出评分=0;
+  if(金叉){ let w=3.0; if(macd.金叉) w+=2.0; else if(macd.状态==="零轴上") w+=1.0; else w*=0.7; 买入评分+=w; }
+  if(死叉){ let w=3.0; if(macd.死叉) w+=2.0; else if(macd.状态==="零轴下") w+=1.0; else w*=0.7; 卖出评分+=w; }
+  if(macd.金叉 && !金叉) 买入评分+=1.5;
+  if(macd.死叉 && !死叉) 卖出评分+=1.5;
+  if(大阳线) 买入评分 += 放量?2.0:1.0;
+  if(大阴线) 卖出评分 += 放量?2.0:1.0;
+  if(距低点<5) 买入评分+=2.0;
+  if(距高点>-3 && Math.abs(当前涨跌)<0.5) 卖出评分+=1.5;
+  if(RSI<30) 买入评分+=1.5;
+  if(RSI>70) 卖出评分+=1.5;
+  if(多头排列) 买入评分+=1.5;
+  if(空头排列) 卖出评分+=1.5;
+  if(当前净值>MA20 && 昨日净值<MA20) 买入评分+=1.0;
+  if(当前净值<MA20 && 昨日净值>MA20) 卖出评分+=1.0;
+
+  买入评分 *= marketFactor;
+  if(marketFactor<1.0) 卖出评分 *= (1.0+(1.0-marketFactor));
+
+  const 净评分 = Math.round((买入评分-卖出评分)*10)/10;
+  const 今日大涨 = 日涨跌>2.5, 今日暴涨 = 日涨跌>4;
+
+  let 仓位建议;
+  if(净评分>=5 && !今日大涨) 仓位建议="50-70%";
+  else if(净评分>=3 && !今日大涨) 仓位建议="30-50%";
+  else if(净评分>=1.5 && !今日大涨) 仓位建议="10-20%";
+  else if(净评分>0) 仓位建议="5-10%";
+  else 仓位建议="0%";
+
+  const 是看好 = profile.long==="看好";
+  let 建议, 策略;
+  if(卖出评分>=4){ 建议="清仓"; 策略=是看好?"保留底仓，波段清仓":"全部清仓"; }
+  else if(卖出评分>=2.5){ 建议="减仓"; 策略=是看好?"减仓避险，等低位回补":"减仓不补仓"; }
+  else if(距高点>-3 && 卖出评分>=1){ 建议="止盈"; 策略=是看好?"止盈部分，底仓持有":"全部止盈"; }
+  else if(预判金叉 && !今日大涨){ 建议="预埋"; 策略=`预判${预判金叉天数}天内金叉，今日15:00前预埋`; }
+  else if(净评分>=5 && !今日大涨){ 建议="强烈买入"; 策略=是看好?"重仓买入，长期持有":"短线参与"; }
+  else if(净评分>=3 && !今日大涨){ 建议="买入"; 策略=是看好?"正常买入，长期持有":"短线买入"; }
+  else if(净评分>=1.5 && 金叉 && !今日大涨){ 建议="加仓"; 策略=是看好?"加仓摊低成本":"谨慎加仓"; }
+  else if(距低点<3 && 大阳线 && !今日大涨){ 建议="补仓"; 策略=是看好?"补仓降成本":"谨慎补仓"; }
+  else if(净评分>=1 && !今日大涨){ 建议="关注"; 策略=是看好?"关注等确认":"观望为主"; }
+  else if(今日暴涨 && 净评分>0){ 建议="暴涨观望"; 策略=`今日已涨${日涨跌.toFixed(1)}%，等回调再入`; }
+  else if(今日大涨 && 净评分>0){ 建议="大涨观望"; 策略=`今日涨${日涨跌.toFixed(1)}%，明天回调可入`; }
+  else if(趋势强度>=2){ 建议="持有"; 策略=是看好?"持有不动":"持有设止盈"; }
+  else if(趋势强度<=-2){ 建议="观望"; 策略=是看好?"等企稳后加仓":"观望不抄底"; }
+  else { 建议="观望"; 策略=是看好?"等信号":"不关注"; }
+
+  return {
+    代码:code, 名称:profile.name, 板块:profile.sector, 长期:profile.long,
+    净值:+当前净值.toFixed(4), 涨跌:+日涨跌.toFixed(2), 昨日涨跌:+昨日涨跌.toFixed(2),
+    MA5:+MA5.toFixed(4), MA10:+MA10.toFixed(4), MA20:+MA20.toFixed(4), MA60:+MA60.toFixed(4),
+    趋势强度, 多头排列, 空头排列, 金叉, 死叉,
+    MACD:macd.状态, MACD金叉:macd.金叉, MACD死叉:macd.死叉,
+    RSI:+RSI.toFixed(1), 距高点:+距高点.toFixed(1), 距低点:+距低点.toFixed(1),
+    买入评分:+买入评分.toFixed(1), 卖出评分:+卖出评分.toFixed(1), 净评分,
+    预判金叉, 预判金叉天数, 预判死叉, 预判死叉天数,
+    验证结果, 预判准确率, 仓位建议, 建议, 策略,
+    _vals:vals, _ts:ts, _大阳线:大阳线, _大阴线:大阴线, _放量:放量
+  };
+}
+
+/* 大盘环境（沪深300=510300，同 fund.py） */
+function marketEnv(vals){
+  const MA20=ma(vals,20), MA60=ma(vals,60);
+  const cur=vals[vals.length-1], prev=vals[vals.length-2];
+  const chg=(cur-prev)/prev*100;
+  if(cur>MA20 && MA20>MA60) return {状态:"牛市", 加成:1.2, 描述:`沪深300多头 ${chg>=0?"+":""}${chg.toFixed(2)}%`};
+  if(cur<MA20 && MA20<MA60) return {状态:"熊市", 加成:0.7, 描述:`沪深300空头 ${chg>=0?"+":""}${chg.toFixed(2)}%`};
+  return {状态:"震荡", 加成:1.0, 描述:`沪深300震荡 ${chg>=0?"+":""}${chg.toFixed(2)}%`};
+}
+</script>
+<script>
+"use strict";
+/* ================= 渲染 ================= */
+const $ = id => document.getElementById(id);
+let RESULTS = [], FAILED = [], PRED = loadPred();
+let sortKey = "净评分", sortDir = -1;
+
+const cls = v => v>0 ? "up" : v<0 ? "down" : "flat";
+const sign = v => (v>0?"+":"") + v;
+const fmtDate = t => { const d=new Date(t); return `${d.getMonth()+1}/${d.getDate()}`; };
+
+function adviceTag(a){
+  if(["强烈买入","买入","加仓","补仓","预埋"].includes(a)) return `<span class="tag tag-buy">${a}</span>`;
+  if(["清仓","减仓","止盈"].includes(a)) return `<span class="tag tag-sell">${a}</span>`;
+  if(["持有","关注","大涨观望","暴涨观望"].includes(a)) return `<span class="tag tag-hold">${a}</span>`;
+  return `<span class="tag tag-watch">${a}</span>`;
+}
+
+function renderCards(){
+  const ok = RESULTS;
+  $("cTotal").textContent = ok.length + " / " + FUNDS.length;
+  $("cTotalSub").textContent = FAILED.length ? `${FAILED.length}只获取失败` : "11 个板块全部在线";
+  $("cBuy").textContent = ok.filter(r=>["强烈买入","买入","加仓","补仓"].includes(r.建议)).length;
+  $("cSell").textContent = ok.filter(r=>["清仓","减仓","止盈"].includes(r.建议)).length;
+  $("cPred").textContent = ok.filter(r=>r.预判金叉).length;
+  const g = PRED.统计["即将金叉"];
+  $("cAcc").textContent = g.总计>0 ? (g.正确/g.总计*100).toFixed(0)+"%" : "-";
+  $("cAccSub").textContent = g.总计>0 ? `正确${g.正确} / 共${g.总计}次` : "运行几天后自动累积";
+}
+
+function renderMatrix(){
+  const ch = echarts.init($("chMatrix"));
+  const mk = (data, sym, rot=0) => ({
+    type:"scatter", symbol:sym, symbolRotate:rot, data,
+    symbolSize: d => Math.max(13, Math.min(38, Math.abs(d[2])*5.5)),
+    itemStyle:{ color:p=>p.data[4], opacity:.95, borderColor:"#ffffffcc", borderWidth:1.2, shadowBlur:6, shadowColor:p=>p.data[4] },
+    label:{ show:true, formatter:p=>Math.abs(p.data[2])>=2.5 ? p.data[3].slice(0,6) : "", position:"top", distance:4, color:"#e6edf3", fontSize:11, fontWeight:600, textBorderColor:"#000", textBorderWidth:2 },
+    labelLayout:{ hideOverlap:true },
+    emphasis:{ scale:1.4, label:{ show:true, formatter:p=>p.data[3], position:"top", color:"#fff", fontSize:12 } }
+  });
+  const toD = r => [r.距低点, r.趋势强度, r.净评分, r.名称, r.长期==="看好"?"#00e676":"#ffa726"];
+  const up = RESULTS.filter(r=>r.净评分>=3).map(toD);
+  const dn = RESULTS.filter(r=>r.净评分<=-2).map(toD);
+  const mid = RESULTS.filter(r=>r.净评分>-2&&r.净评分<3).map(toD);
+  ch.setOption({
+    backgroundColor:"transparent",
+    grid:{left:50,right:25,top:30,bottom:40},
+    tooltip:{ textStyle:{fontSize:13}, formatter:p=>`<b>${p.data[3]}</b><br>距低点 ${p.data[0]}%<br>趋势 ${p.data[1]}<br>净评分 ${p.data[2]>0?"+":""}${p.data[2]}` },
+    xAxis:{ name:"距60日低点%", nameLocation:"middle", nameGap:28, nameTextStyle:{color:"#c9d1d9",fontSize:12}, axisLine:{lineStyle:{color:"#30363d"}}, splitLine:{lineStyle:{color:"#21262d"}}, axisLabel:{color:"#c9d1d9",fontSize:12} },
+    yAxis:{ name:"趋势强度", nameTextStyle:{color:"#c9d1d9",fontSize:12}, axisLine:{lineStyle:{color:"#30363d"}}, splitLine:{lineStyle:{color:"#21262d"}}, axisLabel:{color:"#c9d1d9",fontSize:12} },
+    series:[ mk(mid,"circle"), mk(up,"triangle"), mk(dn,"triangle",180) ]
+  });
+  ch.on("click", p=>{ const r = RESULTS.find(x=>x.名称===p.data[3]); if(r) openDrawer(r.代码); });
+}
+
+function renderSector(){
+  const ch = echarts.init($("chSector"));
+  const sectors = [...new Set(RESULTS.map(r=>r.板块))];
+  const data = sectors.map(s=>{
+    const arr = RESULTS.filter(r=>r.板块===s);
+    return { name:s, val:+(arr.reduce((a,r)=>a+r.趋势强度,0)/arr.length).toFixed(2), n:arr.length };
+  }).sort((a,b)=>a.val-b.val);
+  ch.setOption({
+    backgroundColor:"transparent",
+    grid:{left:70,right:40,top:10,bottom:25},
+    tooltip:{ formatter:p=>`${p.name}<br>平均趋势 ${p.value>0?"+":""}${p.value}<br>${data[p.dataIndex].n}只基金` },
+    xAxis:{ type:"value", axisLine:{lineStyle:{color:"#30363d"}}, splitLine:{lineStyle:{color:"#21262d"}}, axisLabel:{color:"#c9d1d9",fontSize:12} },
+    yAxis:{ type:"category", data:data.map(d=>d.name), axisLine:{lineStyle:{color:"#30363d"}}, axisLabel:{color:"#e6edf3",fontSize:13,fontWeight:600} },
+    series:[{ type:"bar", data:data.map(d=>({ value:d.val, itemStyle:{ color:d.val>0?"#ff4d4f":d.val<0?"#00c853":"#ffcc00", opacity:.9 } })),
+      barWidth:"60%", label:{ show:true, position:"right", color:"#e6edf3", fontSize:12, fontWeight:600, formatter:p=>(p.value>0?"+":"")+p.value } }]
+  });
+}
+
+function renderPredChart(){
+  const ch = echarts.init($("chPred"));
+  const g = PRED.统计["即将金叉"], s = PRED.统计["即将死叉"];
+  if(g.总计+s.总计===0){
+    ch.setOption({ backgroundColor:"transparent", title:{text:"暂无预判数据\n面板每天打开后自动累积验证", left:"center", top:"middle", textStyle:{color:"#6e7681", fontSize:13, fontWeight:400}} });
+    return;
+  }
+  ch.setOption({
+    backgroundColor:"transparent",
+    grid:{left:40,right:20,top:30,bottom:25},
+    legend:{ textStyle:{color:"#8b949e"}, top:0 },
+    tooltip:{},
+    xAxis:{ type:"category", data:["金叉预判","死叉预判"], axisLine:{lineStyle:{color:"#30363d"}}, axisLabel:{color:"#e6edf3"} },
+    yAxis:{ type:"value", axisLine:{lineStyle:{color:"#30363d"}}, splitLine:{lineStyle:{color:"#21262d"}}, axisLabel:{color:"#8b949e"} },
+    series:[
+      { name:"正确", type:"bar", data:[g.正确, s.正确], itemStyle:{color:"#ff4d4f"}, barWidth:"28%", label:{show:true, position:"top", color:"#e6edf3"} },
+      { name:"失误", type:"bar", data:[g.失误, s.失误], itemStyle:{color:"#00c853"}, barWidth:"28%", label:{show:true, position:"top", color:"#e6edf3"} }
+    ]
+  });
+}
+
+function renderTopList(){
+  const buy = [...RESULTS].filter(r=>r.净评分>0).sort((a,b)=>b.净评分-a.净评分).slice(0,5);
+  const sell = [...RESULTS].filter(r=>r.净评分<0).sort((a,b)=>a.净评分-b.净评分).slice(0,5);
+  const pred = RESULTS.filter(r=>r.预判金叉);
+  const row = (r, extra) => `<div class="item" onclick="openDrawer('${r.代码}')"><span>${r.长期==="看好"?"⭐":""}${r.名称}</span><span class="${cls(r.净评分)}">${extra}</span></div>`;
+  let h = `<div class="sec">买入机会 TOP5</div>`;
+  h += buy.length ? buy.map(r=>row(r, `${sign(r.净评分)} · 仓位${r.仓位建议}`)).join("") : `<div class="flat">今日无买入信号</div>`;
+  h += `<div class="sec">风险警示 TOP5</div>`;
+  h += sell.length ? sell.map(r=>row(r, `${sign(r.净评分)} · ${r.建议}`)).join("") : `<div class="flat">今日无风险信号</div>`;
+  if(pred.length){
+    h += `<div class="sec">预埋机会（即将金叉）</div>`;
+    h += pred.map(r=>row(r, `约${r.预判金叉天数}天内金叉`)).join("");
+  }
+  $("topList").innerHTML = h;
+}
+
+function renderTable(){
+  const fs = $("fSector").value, fa = $("fAdvice").value, fl = $("fLong").value;
+  const q = $("fSearch").value.trim().toLowerCase();
+  const onlySignal = $("fSignal").checked;
+  let rows = RESULTS.filter(r=>{
+    if(fs && r.板块!==fs) return false;
+    if(fa && r.建议!==fa) return false;
+    if(fl && r.长期!==fl) return false;
+    if(q && !(r.名称.toLowerCase().includes(q) || r.代码.includes(q))) return false;
+    if(onlySignal && ["持有","观望"].includes(r.建议) && !r.预判金叉 && !r.验证结果) return false;
+    return true;
+  });
+  rows.sort((a,b)=>{
+    const va=a[sortKey], vb=b[sortKey];
+    if(typeof va==="number" && typeof vb==="number") return (va-vb)*sortDir;
+    return String(va).localeCompare(String(vb),"zh")*sortDir;
+  });
+  $("fCount").textContent = `显示 ${rows.length} 只`;
+  if(!rows.length){ $("tbody").innerHTML = `<tr><td colspan="12" style="text-align:center;color:#8b949e;padding:24px">没有符合条件的基金</td></tr>`; return; }
+  $("tbody").innerHTML = rows.map(r=>{
+    const predTag = r.预判金叉 ? `<span class="tag tag-pred">${r.预判金叉天数}天金叉</span>` : r.预判死叉 ? `<span class="tag tag-pred">${r.预判死叉天数}天死叉</span>` : "";
+    const macdColor = r.MACD金叉||r.MACD==="金叉" ? "up" : r.MACD死叉||r.MACD==="死叉" ? "down" : "flat";
+    return `<tr onclick="openDrawer('${r.代码}')">
+      <td class="l"><div class="fname">${r.名称} ${r.长期==="看好"?'<span class="tag tag-long">看好</span>':""}</div><div class="fcode">${r.代码}</div></td>
+      <td class="l">${r.板块}</td>
+      <td>${r.净值}</td>
+      <td class="${cls(r.涨跌)}">${sign(r.涨跌)}</td>
+      <td class="${r.RSI<30?"up":r.RSI>70?"down":"flat"}">${r.RSI}</td>
+      <td class="l ${macdColor}">${r.MACD}${r.金叉?' <span class="up">×金</span>':r.死叉?' <span class="down">×死</span>':""}</td>
+      <td class="${cls(r.趋势强度)}">${sign(r.趋势强度)}</td>
+      <td>${r.距低点}</td>
+      <td class="${cls(r.净评分)}" style="font-weight:700">${sign(r.净评分)}</td>
+      <td class="l">${predTag}</td>
+      <td class="l">${adviceTag(r.建议)}</td>
+      <td class="l">${r.仓位建议}</td>
+    </tr>`;
+  }).join("");
+}
+
+/* ================= 详情抽屉 ================= */
+let dchart = null;
+window.openDrawer = function(code){
+  const r = RESULTS.find(x=>x.代码===code);
+  if(!r) return;
+  const d = $("drawer");
+  const verifyLine = r.验证结果 ? `<div class="${r.验证结果.includes("正确")?"verify-ok":"verify-bad"}">昨日预判验证: ${r.验证结果}${r.预判准确率? " · "+r.预判准确率:""}</div>` : "";
+  const predLine = r.预判金叉 ? `<div style="color:#e3b341">预判: 即将金叉（约${r.预判金叉天数}天内）→ 今日15:00前可小额预埋，或明天开盘观察</div>` : r.预判死叉 ? `<div style="color:#e3b341">预判: 即将死叉（约${r.预判死叉天数}天内）→ 注意风险</div>` : "";
+  d.innerHTML = `
+    <button class="close" onclick="closeDrawer()">✕</button>
+    <h2>${r.名称} ${r.长期==="看好"?'<span class="tag tag-long">长期看好</span>':'<span class="tag tag-watch">长期谨慎</span>'}</h2>
+    <div class="fcode">${r.代码} · ${r.板块}板块</div>
+    <div class="advice-box">
+      <div style="font-size:16px;margin-bottom:4px">${adviceTag(r.建议)} <b style="margin-left:8px">仓位建议 ${r.仓位建议}</b></div>
+      <div>${r.策略}</div>
+      ${predLine}${verifyLine}
+    </div>
+    <div id="dchart"></div>
+    <div class="kv">
+      <div><span>最新净值</span><b>${r.净值}</b></div>
+      <div><span>日涨跌</span><b class="${cls(r.涨跌)}">${sign(r.涨跌)}%</b></div>
+      <div><span>RSI(14)</span><b class="${r.RSI<30?"up":r.RSI>70?"down":""}">${r.RSI}${r.RSI<30?" 超卖":r.RSI>70?" 超买":""}</b></div>
+      <div><span>MACD</span><b>${r.MACD}</b></div>
+      <div><span>趋势强度</span><b class="${cls(r.趋势强度)}">${sign(r.趋势强度)}${r.多头排列?" 多头":r.空头排列?" 空头":""}</b></div>
+      <div><span>距60日高点</span><b class="down">${r.距高点}%</b></div>
+      <div><span>距60日低点</span><b class="up">+${r.距低点}%</b></div>
+      <div><span>MA5 / MA10</span><b>${r.MA5} / ${r.MA10}</b></div>
+      <div><span>MA20 / MA60</span><b>${r.MA20} / ${r.MA60}</b></div>
+    </div>
+    <div class="score-detail">
+      <b>评分明细</b>（大盘加成已计入）<br>
+      买入评分 <b class="up">${r.买入评分}</b> · 卖出评分 <b class="down">${r.卖出评分}</b> · 净评分 <b class="${cls(r.净评分)}">${sign(r.净评分)}</b><br>
+      ${r.金叉?"均线金叉 +3 · ":""}${r.死叉?"均线死叉 -3 · ":""}${r.MACD金叉?"MACD金叉确认 · ":""}${r.MACD死叉?"MACD死叉确认 · ":""}${r._大阳线?"大阳线"+(r._放量?"(放量)":"")+" · ":""}${r._大阴线?"大阴线"+(r._放量?"(放量)":"")+" · ":""}${r.距低点<5?"低位 +2 · ":""}${r.RSI<30?"RSI超卖 +1.5 · ":""}${r.RSI>70?"RSI超买 -1.5 · ":""}${r.多头排列?"多头排列 +1.5":r.空头排列?"空头排列 -1.5":""}
+    </div>`;
+  d.classList.add("open"); $("dmask").classList.add("open");
+  if(dchart) dchart.dispose();
+  dchart = echarts.init($("dchart"));
+  const n = Math.min(180, r._vals.length);
+  const vals = r._vals.slice(-n), ts = r._ts.slice(-n);
+  const maAt = (arr,p,i)=> i<p-1 ? null : +(arr.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p).toFixed(4);
+  dchart.setOption({
+    backgroundColor:"transparent",
+    grid:{left:45,right:15,top:30,bottom:25},
+    tooltip:{ trigger:"axis" },
+    legend:{ textStyle:{color:"#8b949e"}, top:0, itemWidth:14 },
+    xAxis:{ type:"category", data:ts.map(fmtDate), axisLine:{lineStyle:{color:"#30363d"}}, axisLabel:{color:"#8b949e"} },
+    yAxis:{ type:"value", scale:true, axisLine:{lineStyle:{color:"#30363d"}}, splitLine:{lineStyle:{color:"#21262d"}}, axisLabel:{color:"#8b949e"} },
+    series:[
+      { name:"净值", type:"line", data:vals, showSymbol:false, lineStyle:{color:"#58a6ff",width:2}, itemStyle:{color:"#58a6ff"} },
+      { name:"MA5", type:"line", data:vals.map((_,i)=>maAt(vals,5,i)), showSymbol:false, lineStyle:{color:"#ffcc00",width:1} },
+      { name:"MA10", type:"line", data:vals.map((_,i)=>maAt(vals,10,i)), showSymbol:false, lineStyle:{color:"#ff7b72",width:1} },
+      { name:"MA20", type:"line", data:vals.map((_,i)=>maAt(vals,20,i)), showSymbol:false, lineStyle:{color:"#d2a8ff",width:1} }
+    ]
+  });
+};
+window.closeDrawer = function(){ $("drawer").classList.remove("open"); $("dmask").classList.remove("open"); };
+$("dmask").onclick = closeDrawer;
+</script>
+<script>
+"use strict";
+/* ================= 主流程 ================= */
+function renderAll(){
+  renderCards(); renderMatrix(); renderSector(); renderPredChart(); renderTopList(); renderTable();
+}
+
+async function run(){
+  const btn = $("refreshBtn");
+  btn.disabled = true; btn.textContent = "加载中…";
+  $("pbar").style.width = "2%";
+  RESULTS = []; FAILED = [];
+
+  /* 先取大盘 */
+  $("loadStatus").textContent = "获取大盘环境…";
+  const idx = await loadFund("510300");
+  let env = {状态:"未知", 加成:1.0, 描述:"大盘数据获取失败"};
+  if(!idx.error) env = marketEnv(idx.vals);
+  const badge = $("envBadge");
+  badge.textContent = `大盘: ${env.状态} · ${env.描述} · 加成×${env.加成}`;
+  badge.className = "env-badge " + (env.状态==="牛市"?"env-bull":env.状态==="熊市"?"env-bear":env.状态==="震荡"?"env-shake":"env-unknown");
+
+  /* 并发加载115只基金（6路并发 + 随机间隔，与脚本限流一致） */
+  const profileMap = {}; FUNDS.forEach(f=>profileMap[f.code]=f);
+  const dataMap = {}; if(!idx.error) dataMap["510300"] = idx;
+  let done = 0;
+  const queue = FUNDS.map(f=>f.code);
+  async function worker(){
+    while(queue.length){
+      const code = queue.shift();
+      if(!code) break;
+      let d = dataMap[code];
+      if(!d){ d = await loadFund(code); await new Promise(r=>setTimeout(r, 40+Math.random()*110)); }
+      done++;
+      $("pbar").style.width = (2 + done/FUNDS.length*96).toFixed(0)+"%";
+      $("loadStatus").textContent = `加载基金 ${done}/${FUNDS.length}`;
+      if(d.error){ FAILED.push({code, 名称:profileMap[code]?.name||code, error:d.error}); continue; }
+      dataMap[code] = d;
+      RESULTS.push(analyzeFund(code, d.vals, d.ts, PRED, env.加成, profileMap[code]));
+      if(done % 12 === 0){ renderCards(); renderTable(); } /* 边加载边显示 */
+    }
+  }
+  await Promise.all(Array.from({length:8}, worker));
+  savePred(PRED);
+
+  renderAll();
+
+  $("pbar").style.width = "100%";
+  const now = new Date();
+  $("updateTime").textContent = "更新于 " + now.toLocaleString("zh-CN", {hour12:false});
+  $("loadStatus").textContent = FAILED.length ? `完成（${FAILED.length}只失败）` : "加载完成";
+  btn.disabled = false; btn.textContent = "刷新数据";
+  setTimeout(()=>{ $("pbar").style.width = "0%"; }, 1200);
+}
+
+/* ================= 筛选 / 排序 / 刷新 ================= */
+(function initFilters(){
+  const sectors = [...new Set(FUNDS.map(f=>f.sector))];
+  sectors.forEach(s=>{ const o=document.createElement("option"); o.value=s; o.textContent=s; $("fSector").appendChild(o); });
+  ["强烈买入","买入","加仓","补仓","预埋","关注","清仓","减仓","止盈","持有","观望","大涨观望","暴涨观望"].forEach(a=>{
+    const o=document.createElement("option"); o.value=a; o.textContent=a; $("fAdvice").appendChild(o);
+  });
+  ["fSector","fAdvice","fLong"].forEach(id=>$(id).onchange=renderTable);
+  $("fSearch").oninput = renderTable;
+  $("fSignal").onchange = renderTable;
+  document.querySelectorAll("th.sortable").forEach(th=>{
+    th.onclick = ()=>{
+      const k = th.dataset.k;
+      if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=(k==="距低点"||k==="净评分"||k==="趋势强度"||k==="RSI")?-1:1; }
+      renderTable();
+    };
+  });
+})();
+
+$("refreshBtn").onclick = run;
+let autoTimer = null;
+$("autoRefresh").onchange = e=>{
+  if(e.target.checked){ autoTimer = setInterval(run, 15*60*1000); }
+  else { clearInterval(autoTimer); autoTimer=null; }
+};
+window.addEventListener("resize", ()=>{ document.querySelectorAll(".chart").forEach(el=>{ const c=echarts.getInstanceByDom(el); if(c) c.resize(); }); if(dchart) dchart.resize(); });
+
+run();
+</script>
+</body>
+</html>
