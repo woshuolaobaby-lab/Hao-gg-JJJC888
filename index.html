@@ -26,6 +26,20 @@
   .container { padding:16px 20px 40px; max-width:1600px; margin:0 auto; }
   .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
   .card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:14px 16px; }
+  .card.clickable { cursor:pointer; transition:border-color .15s, transform .15s; }
+  .card.clickable:hover { border-color:#58a6ff; transform:translateY(-2px); }
+  /* 信号名单弹窗 */
+  .modal-mask { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:70; display:none; }
+  .modal-mask.open { display:flex; align-items:flex-start; justify-content:center; padding-top:8vh; }
+  .modal { background:#161b22; border:1px solid #30363d; border-radius:12px; width:520px; max-width:92vw; max-height:76vh; overflow-y:auto; padding:18px; }
+  .modal h3 { font-size:16px; margin-bottom:4px; }
+  .modal .sub { color:#8b949e; font-size:12px; margin-bottom:10px; }
+  .modal .close { float:right; background:none; border:none; color:#8b949e; font-size:20px; cursor:pointer; margin-top:-4px; }
+  .modal .item { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 10px; border-bottom:1px solid #21262d; cursor:pointer; font-size:13px; }
+  .modal .item:hover { background:#1c2128; }
+  .modal .item .info b { font-size:14px; }
+  .modal .item .info .fcode { margin-left:6px; }
+  .modal .item .right { text-align:right; white-space:nowrap; }
   .card .label { color:#8b949e; font-size:12px; margin-bottom:6px; }
   .card .value { font-size:24px; font-weight:700; }
   .card .sub { color:#8b949e; font-size:11px; margin-top:4px; }
@@ -94,9 +108,9 @@
 <div class="container">
   <div class="cards">
     <div class="card"><div class="label">监测基金</div><div class="value" id="cTotal">-</div><div class="sub" id="cTotalSub">11 个板块</div></div>
-    <div class="card"><div class="label">买入信号</div><div class="value up" id="cBuy">-</div><div class="sub">强烈买入 / 买入 / 加仓 / 补仓</div></div>
-    <div class="card"><div class="label">卖出信号</div><div class="value down" id="cSell">-</div><div class="sub">清仓 / 减仓 / 止盈</div></div>
-    <div class="card"><div class="label">预判金叉</div><div class="value" style="color:#e3b341" id="cPred">-</div><div class="sub">可15:00前小额预埋</div></div>
+    <div class="card clickable" onclick="showList('buy')" title="点击查看名单"><div class="label">买入信号</div><div class="value up" id="cBuy">-</div><div class="sub">强烈买入 / 买入 / 加仓 / 补仓 · 点我看名单</div></div>
+    <div class="card clickable" onclick="showList('sell')" title="点击查看名单"><div class="label">卖出信号</div><div class="value down" id="cSell">-</div><div class="sub">清仓 / 减仓 / 止盈 · 点我看名单</div></div>
+    <div class="card clickable" onclick="showList('pred')" title="点击查看名单"><div class="label">预判金叉</div><div class="value" style="color:#e3b341" id="cPred">-</div><div class="sub">可15:00前小额预埋 · 点我看名单</div></div>
     <div class="card"><div class="label">金叉预判准确率</div><div class="value" style="color:#58a6ff" id="cAcc">-</div><div class="sub" id="cAccSub">运行几天后自动累积</div></div>
   </div>
 
@@ -108,7 +122,7 @@
 
   <div class="charts-row">
     <div class="panel"><h3>预判准确率统计<small>金叉 / 死叉预判验证</small></h3><div id="chPred" class="chart" style="height:220px"></div></div>
-    <div class="panel" style="grid-column:span 2; min-width:0"><h3>全部基金信号总表<small>共115只 · 点击行查看K线详情 · 点击表头排序</small></h3>
+    <div class="panel" style="grid-column:span 2; min-width:0"><h3>全部基金信号总表<small>共129只 · 点击行查看K线详情 · 点击表头排序</small></h3>
       <div class="filters">
         <select id="fSector"><option value="">全部板块</option></select>
         <select id="fAdvice"><option value="">全部建议</option></select>
@@ -142,12 +156,13 @@
   </div>
 </div>
 
+<div class="modal-mask" id="mmask"><div class="modal" id="modal"></div></div>
 <div class="drawer-mask" id="dmask"></div>
 <div class="drawer" id="drawer"></div>
 <script>
 "use strict";
 /* ================= 基金档案（与 fund.py 完全一致，115只） ================= */
-const FUNDS = [{"code": "001549", "name": "天弘上证50ETF", "sector": "宽基", "long": "谨慎"}, {"code": "530000", "name": "天弘上证50场内", "sector": "宽基", "long": "看好"}, {"code": "006021", "name": "广发沪深300", "sector": "宽基", "long": "谨慎"}, {"code": "510300", "name": "沪深300ETF", "sector": "宽基", "long": "看好"}, {"code": "011609", "name": "易方达科创50", "sector": "宽基", "long": "谨慎"}, {"code": "588080", "name": "科创50场内", "sector": "宽基", "long": "看好"}, {"code": "019817", "name": "广发创业板ETF", "sector": "宽基", "long": "谨慎"}, {"code": "159952", "name": "创业板场内", "sector": "宽基", "long": "看好"}, {"code": "588000", "name": "科创50ETF华夏", "sector": "宽基", "long": "看好"}, {"code": "013305", "name": "科创创业50", "sector": "宽基", "long": "看好"}, {"code": "020465", "name": "招商半导体", "sector": "科技", "long": "看好"}, {"code": "561980", "name": "半导体设备ETF", "sector": "科技", "long": "看好"}, {"code": "020482", "name": "机器人", "sector": "科技", "long": "看好"}, {"code": "560770", "name": "机器人ETF", "sector": "科技", "long": "看好"}, {"code": "020900", "name": "通信设备", "sector": "科技", "long": "看好"}, {"code": "515880", "name": "通信ETF", "sector": "科技", "long": "看好"}, {"code": "024195", "name": "卫星", "sector": "科技", "long": "看好"}, {"code": "159206", "name": "卫星ETF", "sector": "科技", "long": "看好"}, {"code": "012734", "name": "人工智能", "sector": "科技", "long": "看好"}, {"code": "006503", "name": "集成电路", "sector": "科技", "long": "看好"}, {"code": "001072", "name": "智能装备", "sector": "科技", "long": "看好"}, {"code": "022364", "name": "永赢科技", "sector": "科技", "long": "看好"}, {"code": "019830", "name": "数字产业", "sector": "科技", "long": "看好"}, {"code": "016664", "name": "高端制造", "sector": "科技", "long": "看好"}, {"code": "008989", "name": "科技创新", "sector": "科技", "long": "看好"}, {"code": "009049", "name": "易方达高端", "sector": "科技", "long": "看好"}, {"code": "159852", "name": "软件服务ETF", "sector": "科技", "long": "看好"}, {"code": "012621", "name": "软件服务场内", "sector": "科技", "long": "看好"}, {"code": "002170", "name": "东吴移动", "sector": "科技", "long": "看好"}, {"code": "017877", "name": "新能源", "sector": "新能源", "long": "看好"}, {"code": "018926", "name": "电池", "sector": "新能源", "long": "看好"}, {"code": "019875", "name": "稀有金属", "sector": "新能源", "long": "看好"}, {"code": "001410", "name": "信澳新能源", "sector": "新能源", "long": "看好"}, {"code": "161028", "name": "新能源汽车", "sector": "新能源", "long": "看好"}, {"code": "501226", "name": "全球新能源", "sector": "新能源", "long": "看好"}, {"code": "019058", "name": "绿色电力", "sector": "新能源", "long": "看好"}, {"code": "260112", "name": "基建能源", "sector": "新能源", "long": "看好"}, {"code": "013817", "name": "光伏", "sector": "新能源", "long": "看好"}, {"code": "516290", "name": "光伏场内", "sector": "新能源", "long": "看好"}, {"code": "159755", "name": "电池ETF", "sector": "新能源", "long": "看好"}, {"code": "159608", "name": "稀有金属ETF", "sector": "新能源", "long": "看好"}, {"code": "159611", "name": "电力ETF", "sector": "新能源", "long": "看好"}, {"code": "016185", "name": "电力公用", "sector": "新能源", "long": "谨慎"}, {"code": "006113", "name": "创新药", "sector": "医药", "long": "看好"}, {"code": "501009", "name": "生物科技", "sector": "医药", "long": "看好"}, {"code": "159892", "name": "恒生医药ETF", "sector": "医药", "long": "看好"}, {"code": "015945", "name": "国防军工", "sector": "军工", "long": "看好"}, {"code": "512560", "name": "军工ETF", "sector": "军工", "long": "看好"}, {"code": "025732", "name": "航天航空", "sector": "军工", "long": "看好"}, {"code": "161725", "name": "白酒", "sector": "消费", "long": "谨慎"}, {"code": "000083", "name": "消费行业", "sector": "消费", "long": "谨慎"}, {"code": "012857", "name": "主要消费", "sector": "消费", "long": "谨慎"}, {"code": "159928", "name": "消费场内", "sector": "消费", "long": "谨慎"}, {"code": "560880", "name": "家电场内", "sector": "消费", "long": "看好"}, {"code": "015040", "name": "食品饮料", "sector": "消费", "long": "谨慎"}, {"code": "159736", "name": "食品饮料场内", "sector": "消费", "long": "谨慎"}, {"code": "512690", "name": "酒ETF", "sector": "消费", "long": "谨慎"}, {"code": "005064", "name": "家用电器", "sector": "消费", "long": "谨慎"}, {"code": "159732", "name": "消费电子ETF", "sector": "消费", "long": "看好"}, {"code": "001469", "name": "金融地产", "sector": "金融", "long": "谨慎"}, {"code": "159940", "name": "金融地产场内", "sector": "金融", "long": "谨慎"}, {"code": "012874", "name": "证券指数", "sector": "金融", "long": "谨慎"}, {"code": "005663", "name": "金融精选", "sector": "金融", "long": "谨慎"}, {"code": "161029", "name": "银行指数", "sector": "金融", "long": "谨慎"}, {"code": "006697", "name": "华宝银行", "sector": "金融", "long": "谨慎"}, {"code": "512800", "name": "银行场内", "sector": "金融", "long": "谨慎"}, {"code": "512880", "name": "证券ETF", "sector": "金融", "long": "谨慎"}, {"code": "015896", "name": "化工指数", "sector": "周期", "long": "谨慎"}, {"code": "159870", "name": "化工ETF", "sector": "周期", "long": "谨慎"}, {"code": "005224", "name": "基建工程", "sector": "周期", "long": "谨慎"}, {"code": "516970", "name": "基建场内", "sector": "周期", "long": "谨慎"}, {"code": "014415", "name": "畜牧养殖", "sector": "周期", "long": "谨慎"}, {"code": "516670", "name": "畜牧场内", "sector": "周期", "long": "谨慎"}, {"code": "010770", "name": "天弘农业", "sector": "周期", "long": "谨慎"}, {"code": "512620", "name": "农业场内", "sector": "周期", "long": "谨慎"}, {"code": "008190", "name": "钢铁", "sector": "周期", "long": "谨慎"}, {"code": "515210", "name": "钢铁场内", "sector": "周期", "long": "谨慎"}, {"code": "008280", "name": "煤炭", "sector": "周期", "long": "谨慎"}, {"code": "515220", "name": "煤炭场内", "sector": "周期", "long": "谨慎"}, {"code": "008987", "name": "上海金", "sector": "周期", "long": "谨慎"}, {"code": "518600", "name": "金场内", "sector": "周期", "long": "谨慎"}, {"code": "165520", "name": "800有色", "sector": "周期", "long": "谨慎"}, {"code": "018853", "name": "标普石油", "sector": "周期", "long": "谨慎"}, {"code": "100039", "name": "通胀通缩", "sector": "周期", "long": "谨慎"}, {"code": "270023", "name": "全球精选", "sector": "海外", "long": "看好"}, {"code": "017731", "name": "全球产业升级", "sector": "海外", "long": "看好"}, {"code": "005698", "name": "全球科技先锋", "sector": "海外", "long": "看好"}, {"code": "018230", "name": "全球优质企业", "sector": "海外", "long": "看好"}, {"code": "100055", "name": "全球科技互联网", "sector": "海外", "long": "看好"}, {"code": "016702", "name": "海外量化", "sector": "海外", "long": "看好"}, {"code": "000043", "name": "美国成长", "sector": "海外", "long": "看好"}, {"code": "040046", "name": "纳斯达克", "sector": "海外", "long": "看好"}, {"code": "006479", "name": "广发纳斯达克", "sector": "海外", "long": "看好"}, {"code": "018147", "name": "新兴市场", "sector": "海外", "long": "看好"}, {"code": "008254", "name": "华宝致远", "sector": "海外", "long": "谨慎"}, {"code": "006328", "name": "中概互联网", "sector": "海外", "long": "看好"}, {"code": "513050", "name": "中概互联网ETF", "sector": "海外", "long": "看好"}, {"code": "000979", "name": "港股深", "sector": "海外", "long": "谨慎"}, {"code": "005555", "name": "恒生国企ETF", "sector": "海外", "long": "谨慎"}, {"code": "159954", "name": "恒生国企场内", "sector": "海外", "long": "谨慎"}, {"code": "013402", "name": "恒生科技", "sector": "海外", "long": "看好"}, {"code": "012769", "name": "动漫游戏", "sector": "文娱", "long": "谨慎"}, {"code": "159869", "name": "动漫游戏场内", "sector": "文娱", "long": "谨慎"}, {"code": "004753", "name": "传媒", "sector": "文娱", "long": "谨慎"}, {"code": "512980", "name": "传媒场内", "sector": "文娱", "long": "谨慎"}, {"code": "000390", "name": "华商优势", "sector": "主动混合", "long": "谨慎"}, {"code": "166301", "name": "华商新趋势", "sector": "主动混合", "long": "谨慎"}, {"code": "720001", "name": "财通价值动量", "sector": "主动混合", "long": "谨慎"}, {"code": "001170", "name": "宏利复兴", "sector": "主动混合", "long": "谨慎"}, {"code": "001412", "name": "德邦鑫星", "sector": "主动混合", "long": "谨慎"}, {"code": "001438", "name": "瑞享灵活", "sector": "主动混合", "long": "谨慎"}, {"code": "001048", "name": "新兴产业", "sector": "主动混合", "long": "谨慎"}, {"code": "025942", "name": "广发新动力", "sector": "主动混合", "long": "谨慎"}, {"code": "002163", "name": "东方惠新", "sector": "主动混合", "long": "谨慎"}, {"code": "001194", "name": "稳健回报", "sector": "主动混合", "long": "谨慎"}];
+const FUNDS = [{"code": "001549", "name": "天弘上证50ETF", "sector": "宽基", "long": "谨慎"}, {"code": "530000", "name": "天弘上证50场内", "sector": "宽基", "long": "看好"}, {"code": "006021", "name": "广发沪深300", "sector": "宽基", "long": "谨慎"}, {"code": "510300", "name": "沪深300ETF", "sector": "宽基", "long": "看好"}, {"code": "011609", "name": "易方达科创50", "sector": "宽基", "long": "谨慎"}, {"code": "588080", "name": "科创50场内", "sector": "宽基", "long": "看好"}, {"code": "019817", "name": "广发创业板ETF", "sector": "宽基", "long": "谨慎"}, {"code": "159952", "name": "创业板场内", "sector": "宽基", "long": "看好"}, {"code": "588000", "name": "科创50ETF华夏", "sector": "宽基", "long": "看好"}, {"code": "013305", "name": "科创创业50", "sector": "宽基", "long": "看好"}, {"code": "020465", "name": "招商半导体", "sector": "科技", "long": "看好"}, {"code": "561980", "name": "半导体设备ETF", "sector": "科技", "long": "看好"}, {"code": "020482", "name": "机器人", "sector": "科技", "long": "看好"}, {"code": "560770", "name": "机器人ETF", "sector": "科技", "long": "看好"}, {"code": "020900", "name": "通信设备", "sector": "科技", "long": "看好"}, {"code": "515880", "name": "通信ETF", "sector": "科技", "long": "看好"}, {"code": "024195", "name": "卫星", "sector": "科技", "long": "看好"}, {"code": "159206", "name": "卫星ETF", "sector": "科技", "long": "看好"}, {"code": "012734", "name": "人工智能", "sector": "科技", "long": "看好"}, {"code": "006503", "name": "集成电路", "sector": "科技", "long": "看好"}, {"code": "001072", "name": "智能装备", "sector": "科技", "long": "看好"}, {"code": "022364", "name": "永赢科技", "sector": "科技", "long": "看好"}, {"code": "019830", "name": "数字产业", "sector": "科技", "long": "看好"}, {"code": "016664", "name": "高端制造", "sector": "科技", "long": "看好"}, {"code": "008989", "name": "科技创新", "sector": "科技", "long": "看好"}, {"code": "009049", "name": "易方达高端", "sector": "科技", "long": "看好"}, {"code": "159852", "name": "软件服务ETF", "sector": "科技", "long": "看好"}, {"code": "012621", "name": "软件服务场内", "sector": "科技", "long": "看好"}, {"code": "002170", "name": "东吴移动", "sector": "科技", "long": "看好"}, {"code": "017877", "name": "新能源", "sector": "新能源", "long": "看好"}, {"code": "018926", "name": "电池", "sector": "新能源", "long": "看好"}, {"code": "019875", "name": "稀有金属", "sector": "新能源", "long": "看好"}, {"code": "001410", "name": "信澳新能源", "sector": "新能源", "long": "看好"}, {"code": "161028", "name": "新能源汽车", "sector": "新能源", "long": "看好"}, {"code": "501226", "name": "全球新能源", "sector": "新能源", "long": "看好"}, {"code": "019058", "name": "绿色电力", "sector": "新能源", "long": "看好"}, {"code": "260112", "name": "基建能源", "sector": "新能源", "long": "看好"}, {"code": "013817", "name": "光伏", "sector": "新能源", "long": "看好"}, {"code": "516290", "name": "光伏场内", "sector": "新能源", "long": "看好"}, {"code": "159755", "name": "电池ETF", "sector": "新能源", "long": "看好"}, {"code": "159608", "name": "稀有金属ETF", "sector": "新能源", "long": "看好"}, {"code": "159611", "name": "电力ETF", "sector": "新能源", "long": "看好"}, {"code": "016185", "name": "电力公用", "sector": "新能源", "long": "谨慎"}, {"code": "006113", "name": "创新药", "sector": "医药", "long": "看好"}, {"code": "501009", "name": "生物科技", "sector": "医药", "long": "看好"}, {"code": "159892", "name": "恒生医药ETF", "sector": "医药", "long": "看好"}, {"code": "015945", "name": "国防军工", "sector": "军工", "long": "看好"}, {"code": "512560", "name": "军工ETF", "sector": "军工", "long": "看好"}, {"code": "025732", "name": "航天航空", "sector": "军工", "long": "看好"}, {"code": "161725", "name": "白酒", "sector": "消费", "long": "谨慎"}, {"code": "000083", "name": "消费行业", "sector": "消费", "long": "谨慎"}, {"code": "012857", "name": "主要消费", "sector": "消费", "long": "谨慎"}, {"code": "159928", "name": "消费场内", "sector": "消费", "long": "谨慎"}, {"code": "560880", "name": "家电场内", "sector": "消费", "long": "看好"}, {"code": "015040", "name": "食品饮料", "sector": "消费", "long": "谨慎"}, {"code": "159736", "name": "食品饮料场内", "sector": "消费", "long": "谨慎"}, {"code": "512690", "name": "酒ETF", "sector": "消费", "long": "谨慎"}, {"code": "005064", "name": "家用电器", "sector": "消费", "long": "谨慎"}, {"code": "159732", "name": "消费电子ETF", "sector": "消费", "long": "看好"}, {"code": "001469", "name": "金融地产", "sector": "金融", "long": "谨慎"}, {"code": "159940", "name": "金融地产场内", "sector": "金融", "long": "谨慎"}, {"code": "012874", "name": "证券指数", "sector": "金融", "long": "谨慎"}, {"code": "005663", "name": "金融精选", "sector": "金融", "long": "谨慎"}, {"code": "161029", "name": "银行指数", "sector": "金融", "long": "谨慎"}, {"code": "006697", "name": "华宝银行", "sector": "金融", "long": "谨慎"}, {"code": "512800", "name": "银行场内", "sector": "金融", "long": "谨慎"}, {"code": "512880", "name": "证券ETF", "sector": "金融", "long": "谨慎"}, {"code": "015896", "name": "化工指数", "sector": "周期", "long": "谨慎"}, {"code": "159870", "name": "化工ETF", "sector": "周期", "long": "谨慎"}, {"code": "005224", "name": "基建工程", "sector": "周期", "long": "谨慎"}, {"code": "516970", "name": "基建场内", "sector": "周期", "long": "谨慎"}, {"code": "014415", "name": "畜牧养殖", "sector": "周期", "long": "谨慎"}, {"code": "516670", "name": "畜牧场内", "sector": "周期", "long": "谨慎"}, {"code": "010770", "name": "天弘农业", "sector": "周期", "long": "谨慎"}, {"code": "512620", "name": "农业场内", "sector": "周期", "long": "谨慎"}, {"code": "008190", "name": "钢铁", "sector": "周期", "long": "谨慎"}, {"code": "515210", "name": "钢铁场内", "sector": "周期", "long": "谨慎"}, {"code": "008280", "name": "煤炭", "sector": "周期", "long": "谨慎"}, {"code": "515220", "name": "煤炭场内", "sector": "周期", "long": "谨慎"}, {"code": "008987", "name": "上海金", "sector": "周期", "long": "谨慎"}, {"code": "518600", "name": "金场内", "sector": "周期", "long": "谨慎"}, {"code": "165520", "name": "800有色", "sector": "周期", "long": "谨慎"}, {"code": "018853", "name": "标普石油", "sector": "周期", "long": "谨慎"}, {"code": "100039", "name": "通胀通缩", "sector": "周期", "long": "谨慎"}, {"code": "270023", "name": "全球精选", "sector": "海外", "long": "看好"}, {"code": "017731", "name": "全球产业升级", "sector": "海外", "long": "看好"}, {"code": "005698", "name": "全球科技先锋", "sector": "海外", "long": "看好"}, {"code": "018230", "name": "全球优质企业", "sector": "海外", "long": "看好"}, {"code": "100055", "name": "全球科技互联网", "sector": "海外", "long": "看好"}, {"code": "016702", "name": "海外量化", "sector": "海外", "long": "看好"}, {"code": "000043", "name": "美国成长", "sector": "海外", "long": "看好"}, {"code": "040046", "name": "纳斯达克", "sector": "海外", "long": "看好"}, {"code": "006479", "name": "广发纳斯达克", "sector": "海外", "long": "看好"}, {"code": "018147", "name": "新兴市场", "sector": "海外", "long": "看好"}, {"code": "008254", "name": "华宝致远", "sector": "海外", "long": "谨慎"}, {"code": "006328", "name": "中概互联网", "sector": "海外", "long": "看好"}, {"code": "513050", "name": "中概互联网ETF", "sector": "海外", "long": "看好"}, {"code": "000979", "name": "港股深", "sector": "海外", "long": "谨慎"}, {"code": "005555", "name": "恒生国企ETF", "sector": "海外", "long": "谨慎"}, {"code": "159954", "name": "恒生国企场内", "sector": "海外", "long": "谨慎"}, {"code": "013402", "name": "恒生科技", "sector": "海外", "long": "看好"}, {"code": "012769", "name": "动漫游戏", "sector": "文娱", "long": "谨慎"}, {"code": "159869", "name": "动漫游戏场内", "sector": "文娱", "long": "谨慎"}, {"code": "004753", "name": "传媒", "sector": "文娱", "long": "谨慎"}, {"code": "512980", "name": "传媒场内", "sector": "文娱", "long": "谨慎"}, {"code": "000390", "name": "华商优势", "sector": "主动混合", "long": "谨慎"}, {"code": "166301", "name": "华商新趋势", "sector": "主动混合", "long": "谨慎"}, {"code": "720001", "name": "财通价值动量", "sector": "主动混合", "long": "谨慎"}, {"code": "001170", "name": "宏利复兴", "sector": "主动混合", "long": "谨慎"}, {"code": "001412", "name": "德邦鑫星", "sector": "主动混合", "long": "谨慎"}, {"code": "001438", "name": "瑞享灵活", "sector": "主动混合", "long": "谨慎"}, {"code": "001048", "name": "新兴产业", "sector": "主动混合", "long": "谨慎"}, {"code": "025942", "name": "广发新动力", "sector": "主动混合", "long": "谨慎"}, {"code": "002163", "name": "东方惠新", "sector": "主动混合", "long": "谨慎"}, {"code": "001194", "name": "稳健回报", "sector": "主动混合", "long": "谨慎"}, {"code": "515250", "name": "智能汽车场内", "sector": "科技", "long": "看好"}, {"code": "013292", "name": "富国智能汽车", "sector": "科技", "long": "看好"}, {"code": "008586", "name": "华夏人工智能", "sector": "科技", "long": "看好"}, {"code": "028091", "name": "航天航空行业", "sector": "军工", "long": "看好"}, {"code": "023918", "name": "自由现金流", "sector": "宽基", "long": "谨慎"}, {"code": "159201", "name": "自由现金流场内", "sector": "宽基", "long": "看好"}, {"code": "019062", "name": "易方达软件", "sector": "科技", "long": "看好"}, {"code": "562930", "name": "软件易方达场内", "sector": "科技", "long": "看好"}, {"code": "017512", "name": "北证50", "sector": "宽基", "long": "谨慎"}, {"code": "018099", "name": "保险", "sector": "金融", "long": "谨慎"}, {"code": "020686", "name": "科创新材料", "sector": "科技", "long": "看好"}, {"code": "588160", "name": "科创新材料场内", "sector": "科技", "long": "看好"}, {"code": "007786", "name": "一带一路", "sector": "周期", "long": "谨慎"}, {"code": "515150", "name": "一带一路场内", "sector": "周期", "long": "谨慎"}];
 
 /* ================= 数据加载（script 标签方式，无跨域问题） ================= */
 const FUND_GLOBALS = ["Data_netWorthTrend","Data_ACWorthTrend","fS_name","fS_code","fund_sourceRate","fund_Rate","fund_minsg","stockCodes","zqCodes","stockCodesNew","Data_fluctuationScale","Data_holderStructure","Data_assetAllocation","Data_performanceEvaluation","Data_rateInSimilarType","Data_rateInSimilarPersent","Data_currentFundManager","Data_buySedemption","syl_1n","syl_6y","syl_3y","syl_1y","Data_grandTotal","ishb"];
@@ -228,10 +243,26 @@ const ma = (vals,n,end=vals.length)=> vals.slice(end-n,end).reduce((a,b)=>a+b,0)
 /* ================= 预判记录（localStorage 持久化，逻辑同 fund.py，修复同日重复计数） ================= */
 const PRED_KEY = "fund_prediction_log";
 function loadPred(){
-  try{ const d = JSON.parse(localStorage.getItem(PRED_KEY)); if(d && d.记录 && d.统计) return d; }catch(e){}
-  return {记录:{}, 统计:{"即将金叉":{正确:0,失误:0,总计:0}, "即将死叉":{正确:0,失误:0,总计:0}}};
+  try{
+    const d = JSON.parse(localStorage.getItem(PRED_KEY));
+    if(d && d.记录 && d.统计){
+      /* 一次性修复：周末数据未更新导致的误判（2026-07-26前的统计作废，并清除无数据日期的旧记录） */
+      if(!d._fix20260726){
+        d.统计 = {"即将金叉":{正确:0,失误:0,总计:0}, "即将死叉":{正确:0,失误:0,总计:0}};
+        Object.keys(d.记录).forEach(k=>{ if(!d.记录[k].数据日期) delete d.记录[k]; });
+        d._fix20260726 = true;
+      }
+      return d;
+    }
+  }catch(e){}
+  return {记录:{}, 统计:{"即将金叉":{正确:0,失误:0,总计:0}, "即将死叉":{正确:0,失误:0,总计:0}}, _fix20260726:true};
 }
 function savePred(d){ localStorage.setItem(PRED_KEY, JSON.stringify(d)); }
+/* 数据是否推进到了下一个交易日（周末/节假日净值不更新，跳过验证，避免误判） */
+function dataHasAdvanced(rec, 当前数据日期){
+  if(!rec.数据日期) return true; /* 旧记录没有数据日期，按原逻辑验证 */
+  return 当前数据日期 > rec.数据日期;
+}
 
 /* ================= 核心分析（与 fund.py 分析基金 完全一致） ================= */
 function analyzeFund(code, vals, ts, predData, marketFactor, profile){
@@ -292,7 +323,8 @@ function analyzeFund(code, vals, ts, predData, marketFactor, profile){
   const today = new Date();
   const todayStr = today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
   const rec = predData.记录[code];
-  if(rec && rec.date < todayStr){
+  const 数据日期 = ts[ts.length-1]; /* 净值数据的最后一天（时间戳），用于判断数据是否真的更新了 */
+  if(rec && rec.date < todayStr && dataHasAdvanced(rec, 数据日期)){
     const key = rec.预判;
     const st = predData.统计[key];
     const hit = (key==="即将金叉" && 金叉) || (key==="即将死叉" && 死叉);
@@ -302,8 +334,8 @@ function analyzeFund(code, vals, ts, predData, marketFactor, profile){
     预判准确率 = `${key}准确率 ${(st.正确/st.总计*100).toFixed(0)}%(${st.正确}/${st.总计})`;
     delete predData.记录[code];
   }
-  if(预判金叉) predData.记录[code] = {date:todayStr, 预判:"即将金叉", 均线差:均线差};
-  else if(预判死叉) predData.记录[code] = {date:todayStr, 预判:"即将死叉", 均线差:均线差};
+  if(预判金叉) predData.记录[code] = {date:todayStr, 预判:"即将金叉", 均线差:均线差, 数据日期:数据日期};
+  else if(预判死叉) predData.记录[code] = {date:todayStr, 预判:"即将死叉", 均线差:均线差, 数据日期:数据日期};
 
   /* 加权评分 */
   let 买入评分=0, 卖出评分=0;
@@ -397,7 +429,11 @@ function adviceTag(a){
 function renderCards(){
   const ok = RESULTS;
   $("cTotal").textContent = ok.length + " / " + FUNDS.length;
-  $("cTotalSub").textContent = FAILED.length ? `${FAILED.length}只获取失败` : "11 个板块全部在线";
+  if(FAILED.length){
+    const lack = FAILED.filter(f=>f.error==="数据不足").length;
+    const net = FAILED.length - lack;
+    $("cTotalSub").textContent = [lack?`${lack}只数据不足(新基金)`:"", net?`${net}只网络获取失败`:""].filter(Boolean).join(" · ");
+  } else $("cTotalSub").textContent = "11 个板块全部在线";
   $("cBuy").textContent = ok.filter(r=>["强烈买入","买入","加仓","补仓"].includes(r.建议)).length;
   $("cSell").textContent = ok.filter(r=>["清仓","减仓","止盈"].includes(r.建议)).length;
   $("cPred").textContent = ok.filter(r=>r.预判金叉).length;
@@ -523,6 +559,25 @@ function renderTable(){
       <td class="l">${r.仓位建议}</td>
     </tr>`;
   }).join("");
+  /* 加载失败的基金（如成立未满3个月的新基金）也列出来，避免“消失” */
+  if(!fa && !onlySignal && FAILED.length){
+    const pmap = {}; FUNDS.forEach(f=>pmap[f.code]=f);
+    const bads = FAILED.filter(f=>{
+      const p = pmap[f.code]||{};
+      if(fs && p.sector!==fs) return false;
+      if(fl && p.long!==fl) return false;
+      if(q && !((f.名称||"").toLowerCase().includes(q) || f.code.includes(q))) return false;
+      return true;
+    });
+    if(bads.length) $("tbody").innerHTML += bads.map(f=>{
+      const p = pmap[f.code]||{};
+      return `<tr style="opacity:.55">
+        <td class="l"><div class="fname">${f.名称} ${p.long==="看好"?'<span class="tag tag-long">看好</span>':""}</div><div class="fcode">${f.code}</div></td>
+        <td class="l">${p.sector||""}</td>
+        <td colspan="10" style="color:#8b949e">${f.error==="数据不足"?"⚠ 数据不足：新基金成立未满3个月，累计62个交易日净值后自动纳入分析":("⚠ "+f.error)}</td>
+      </tr>`;
+    }).join("");
+  }
 }
 
 /* ================= 详情抽屉 ================= */
@@ -582,6 +637,40 @@ window.openDrawer = function(code){
 };
 window.closeDrawer = function(){ $("drawer").classList.remove("open"); $("dmask").classList.remove("open"); };
 $("dmask").onclick = closeDrawer;
+
+/* ================= 信号名单弹窗 ================= */
+window.showList = function(type){
+  if(!RESULTS.length) return;
+  let list, title, sub;
+  if(type==="buy"){
+    list = RESULTS.filter(r=>["强烈买入","买入","加仓","补仓"].includes(r.建议)).sort((a,b)=>b.净评分-a.净评分);
+    title = "买入信号"; sub = "强烈买入 / 买入 / 加仓 / 补仓 · 点击基金看K线详情";
+  } else if(type==="sell"){
+    list = RESULTS.filter(r=>["清仓","减仓","止盈"].includes(r.建议)).sort((a,b)=>a.净评分-b.净评分);
+    title = "卖出信号"; sub = "清仓 / 减仓 / 止盈 · 点击基金看K线详情";
+  } else {
+    list = RESULTS.filter(r=>r.预判金叉).sort((a,b)=>(a.预判金叉天数||9)-(b.预判金叉天数||9));
+    title = "预判金叉（预埋机会）"; sub = "按预计金叉天数排序 · 点击基金看K线详情";
+  }
+  const m = $("modal");
+  if(!list.length){
+    m.innerHTML = `<button class="close" onclick="closeList()">✕</button><h3>${title}</h3><div class="sub">${sub}</div><div style="color:#8b949e;padding:20px;text-align:center">今日暂无</div>`;
+  } else {
+    m.innerHTML = `<button class="close" onclick="closeList()">✕</button><h3>${title} <span style="color:#58a6ff">${list.length}只</span></h3><div class="sub">${sub}</div>` +
+      list.map(r=>{
+        const right = type==="pred"
+          ? `<span style="color:#e3b341">约${r.预判金叉天数}天内金叉</span><br><span class="flat">仓位${r.仓位建议}</span>`
+          : `${adviceTag(r.建议)} <b class="${cls(r.净评分)}">${sign(r.净评分)}</b><br><span class="flat">仓位${r.仓位建议}</span>`;
+        return `<div class="item" onclick="closeList();openDrawer('${r.代码}')">
+          <div class="info"><b>${r.名称}</b>${r.长期==="看好"?' <span class="tag tag-long">看好</span>':""}<span class="fcode">${r.代码} · ${r.板块}</span></div>
+          <div class="right">${right}</div>
+        </div>`;
+      }).join("");
+  }
+  $("mmask").classList.add("open");
+};
+window.closeList = function(){ $("mmask").classList.remove("open"); };
+$("mmask").onclick = e=>{ if(e.target.id==="mmask") closeList(); };
 </script>
 <script>
 "use strict";
@@ -605,7 +694,7 @@ async function run(){
   badge.textContent = `大盘: ${env.状态} · ${env.描述} · 加成×${env.加成}`;
   badge.className = "env-badge " + (env.状态==="牛市"?"env-bull":env.状态==="熊市"?"env-bear":env.状态==="震荡"?"env-shake":"env-unknown");
 
-  /* 并发加载115只基金（6路并发 + 随机间隔，与脚本限流一致） */
+  /* 并发加载全部基金（8路并发 + 随机间隔，与脚本限流一致） */
   const profileMap = {}; FUNDS.forEach(f=>profileMap[f.code]=f);
   const dataMap = {}; if(!idx.error) dataMap["510300"] = idx;
   let done = 0;
