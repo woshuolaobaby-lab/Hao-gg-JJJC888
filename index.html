@@ -142,6 +142,18 @@
   .tag-US { background:rgba(88,166,255,.15); color:#58a6ff; border:1px solid rgba(88,166,255,.4); }
   .tag-JP { background:rgba(210,153,34,.15); color:#d29922; border:1px solid rgba(210,153,34,.4); }
   .tag-KR { background:rgba(188,140,255,.15); color:#bc8cff; border:1px solid rgba(188,140,255,.4); }
+  .tag-GB { background:rgba(247,120,186,.15); color:#f778ba; border:1px solid rgba(247,120,186,.4); }
+  .mq-sub { font-size:11px; color:#8b949e; margin-top:3px; }
+  .news-list { max-height:330px; overflow-y:auto; }
+  .news-item { display:flex; gap:8px; padding:6px 2px; border-bottom:1px dashed #21262d; font-size:13px; line-height:1.5; align-items:baseline; }
+  .news-item a { color:#c9d1d9; text-decoration:none; flex:1; }
+  .news-item a:hover { color:#58a6ff; }
+  .news-time { color:#8b949e; flex-shrink:0; font-size:12px; }
+  .news-hl { color:#ffa657 !important; font-weight:600; }
+  .ext-links { margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+  .ext-links a { font-size:12px; color:#58a6ff; border:1px solid #30363d; border-radius:6px; padding:3px 9px; text-decoration:none; background:#161b22; }
+  .ext-links a:hover { border-color:#58a6ff; }
+  .sigt-chip { display:inline-block; margin:0 8px 8px 0; padding:8px 12px; background:#161b22; border:1px solid #30363d; border-radius:8px; font-size:13px; color:#c9d1d9; }
   .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; flex:none; }
   .vtrack { height:5px; background:#21262d; border-radius:3px; margin-top:7px; overflow:hidden; }
   .vfill { height:100%; border-radius:3px; }
@@ -181,8 +193,13 @@
   </div>
 
   <div class="panel" style="margin-bottom:14px">
-    <h3>🔥 第一层：市场大环境<small>A股4指数 + 美股QQQ/VOO 联合判定 + 日经/韩国亚太修正 → 🌐联合大环境（全球风险偏好过滤器）· 绿=牛市 黄=震荡 红=熊市 · 逆风环境自动降级买入信号、压缩仓位</small></h3>
+    <h3>🔥 第一层：市场大环境<small>A股4指数 + 美股QQQ/VOO 联合判定 + 日经/韩国亚太修正 + 英国富时100欧洲参考 → 🌐联合大环境（全球风险偏好过滤器）· 绿=牛市 黄=震荡 红=熊市 · 逆风环境自动降级买入信号、压缩仓位</small></h3>
     <div id="envGrid"><span style="color:#8b949e">加载中…</span></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px">
+    <h3>🌐 全球宏观参考<small>美元指数 · 美债2/10/30年收益率与利差 · 黄金 · 比特币/以太坊(避险资金) · 美联储加息降息观察 · 美国非农 · 点击卡片看K线 · 只作参考，不计入买卖信号</small></h3>
+    <div id="macroGrid"><span style="color:#8b949e">加载中…</span></div>
   </div>
 
   <div class="panel" style="margin-bottom:14px">
@@ -200,6 +217,16 @@
     <div id="radarGrid" class="toplist"><span style="color:#8b949e">加载中…</span></div>
   </div>
 
+  <div class="panel" style="margin-bottom:14px">
+    <h3>📰 全球财经快讯<small>7×24实时财经新闻 · 橙色=与你相关的关键词(美联储/非农/加息降息/黄金等) · 点击标题看原文 · 财联社/华尔街见闻等入口在底部</small></h3>
+    <div id="newsGrid"><span style="color:#8b949e">加载中…</span></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px">
+    <h3>📅 信号追踪 · 准确率回看<small>每天自动把买入/卖出信号+当时净值存档(只存在你自己浏览器，不上传) · 信号满5/20/60/90天后对比最新净值算胜率 · 满90天=你要的"3个月预判准确率"</small></h3>
+    <div id="sigTrackGrid"><span style="color:#8b949e">加载中…</span></div>
+  </div>
+
   <div class="charts-row">
     <div class="panel"><h3>机会矩阵<small>左=超跌 上=强势 · <span style="color:#00e676">● 看好</span> <span style="color:#ffa726">● 谨慎</span> · ▲买入信号 ▼卖出信号</small></h3><div id="chMatrix" class="chart"></div></div>
     <div class="panel"><h3>板块轮动热力<small>平均趋势强度 · 点击红绿条弹出该板块基金名单</small></h3><div id="chSector" class="chart"></div></div>
@@ -207,7 +234,7 @@
   </div>
 
   <div class="charts-row">
-    <div class="panel" style="grid-column:span 3; min-width:0"><h3>全部基金信号总表<small>共132只 · 点击行查看K线详情 · 点击表头排序</small></h3>
+    <div class="panel" style="grid-column:span 3; min-width:0"><h3>全部基金信号总表<small>共<span id="fTotal">-</span>只 · 点击行查看K线详情 · 点击表头排序</small></h3>
       <div class="filters">
         <select id="fSector"><option value="">全部板块</option></select>
         <select id="fAdvice"><option value="">全部建议</option></select>
@@ -289,7 +316,7 @@
 <script>
 "use strict";
 /* ================= 基金档案（与 fund.py 完全一致，115只） ================= */
-const FUNDS = [{"code": "001549", "name": "天弘上证50ETF", "sector": "宽基", "long": "谨慎"}, {"code": "530000", "name": "天弘上证50场内", "sector": "宽基", "long": "看好"}, {"code": "006021", "name": "广发沪深300", "sector": "宽基", "long": "谨慎"}, {"code": "510300", "name": "沪深300ETF", "sector": "宽基", "long": "看好"}, {"code": "011609", "name": "易方达科创50", "sector": "宽基", "long": "谨慎"}, {"code": "588080", "name": "科创50场内", "sector": "宽基", "long": "看好"}, {"code": "019817", "name": "广发创业板ETF", "sector": "宽基", "long": "谨慎"}, {"code": "159952", "name": "创业板场内", "sector": "宽基", "long": "看好"}, {"code": "588000", "name": "科创50ETF华夏", "sector": "宽基", "long": "看好"}, {"code": "013305", "name": "科创创业50", "sector": "宽基", "long": "看好"}, {"code": "020465", "name": "招商半导体", "sector": "科技", "long": "看好"}, {"code": "561980", "name": "半导体设备ETF", "sector": "科技", "long": "看好"}, {"code": "020482", "name": "机器人", "sector": "科技", "long": "看好"}, {"code": "560770", "name": "机器人ETF", "sector": "科技", "long": "看好"}, {"code": "020900", "name": "通信设备", "sector": "科技", "long": "看好"}, {"code": "515880", "name": "通信ETF", "sector": "科技", "long": "看好"}, {"code": "024195", "name": "卫星", "sector": "科技", "long": "看好"}, {"code": "159206", "name": "卫星ETF", "sector": "科技", "long": "看好"}, {"code": "012734", "name": "人工智能", "sector": "科技", "long": "看好"}, {"code": "006503", "name": "集成电路", "sector": "科技", "long": "看好"}, {"code": "001072", "name": "智能装备", "sector": "科技", "long": "看好"}, {"code": "022364", "name": "永赢科技", "sector": "科技", "long": "看好"}, {"code": "019830", "name": "数字产业", "sector": "科技", "long": "看好"}, {"code": "016664", "name": "高端制造", "sector": "科技", "long": "看好"}, {"code": "008989", "name": "科技创新", "sector": "科技", "long": "看好"}, {"code": "009049", "name": "易方达高端", "sector": "科技", "long": "看好"}, {"code": "159852", "name": "软件服务ETF", "sector": "科技", "long": "看好"}, {"code": "012621", "name": "软件服务场内", "sector": "科技", "long": "看好"}, {"code": "002170", "name": "东吴移动", "sector": "科技", "long": "看好"}, {"code": "017877", "name": "新能源", "sector": "新能源", "long": "看好"}, {"code": "018926", "name": "电池", "sector": "新能源", "long": "看好"}, {"code": "019875", "name": "稀有金属", "sector": "新能源", "long": "看好"}, {"code": "001410", "name": "信澳新能源", "sector": "新能源", "long": "看好"}, {"code": "161028", "name": "新能源汽车", "sector": "新能源", "long": "看好"}, {"code": "501226", "name": "全球新能源", "sector": "新能源", "long": "看好"}, {"code": "019058", "name": "绿色电力", "sector": "新能源", "long": "看好"}, {"code": "260112", "name": "基建能源", "sector": "新能源", "long": "看好"}, {"code": "013817", "name": "光伏", "sector": "新能源", "long": "看好"}, {"code": "516290", "name": "光伏场内", "sector": "新能源", "long": "看好"}, {"code": "159755", "name": "电池ETF", "sector": "新能源", "long": "看好"}, {"code": "159608", "name": "稀有金属ETF", "sector": "新能源", "long": "看好"}, {"code": "159611", "name": "电力ETF", "sector": "新能源", "long": "看好"}, {"code": "016185", "name": "电力公用", "sector": "新能源", "long": "谨慎"}, {"code": "006113", "name": "创新药", "sector": "医药", "long": "看好"}, {"code": "501009", "name": "生物科技", "sector": "医药", "long": "看好"}, {"code": "159892", "name": "恒生医药ETF", "sector": "医药", "long": "看好"}, {"code": "015945", "name": "国防军工", "sector": "军工", "long": "看好"}, {"code": "512560", "name": "军工ETF", "sector": "军工", "long": "看好"}, {"code": "025732", "name": "航天航空", "sector": "军工", "long": "看好"}, {"code": "161725", "name": "白酒", "sector": "消费", "long": "谨慎"}, {"code": "000083", "name": "消费行业", "sector": "消费", "long": "谨慎"}, {"code": "012857", "name": "主要消费", "sector": "消费", "long": "谨慎"}, {"code": "159928", "name": "消费场内", "sector": "消费", "long": "谨慎"}, {"code": "560880", "name": "家电场内", "sector": "消费", "long": "看好"}, {"code": "015040", "name": "食品饮料", "sector": "消费", "long": "谨慎"}, {"code": "159736", "name": "食品饮料场内", "sector": "消费", "long": "谨慎"}, {"code": "512690", "name": "酒ETF", "sector": "消费", "long": "谨慎"}, {"code": "005064", "name": "家用电器", "sector": "消费", "long": "谨慎"}, {"code": "159732", "name": "消费电子ETF", "sector": "消费", "long": "看好"}, {"code": "001469", "name": "金融地产", "sector": "金融", "long": "谨慎"}, {"code": "159940", "name": "金融地产场内", "sector": "金融", "long": "谨慎"}, {"code": "012874", "name": "证券指数", "sector": "金融", "long": "谨慎"}, {"code": "005663", "name": "金融精选", "sector": "金融", "long": "谨慎"}, {"code": "161029", "name": "银行指数", "sector": "金融", "long": "谨慎"}, {"code": "006697", "name": "华宝银行", "sector": "金融", "long": "谨慎"}, {"code": "512800", "name": "银行场内", "sector": "金融", "long": "谨慎"}, {"code": "512880", "name": "证券ETF", "sector": "金融", "long": "谨慎"}, {"code": "015896", "name": "化工指数", "sector": "周期", "long": "谨慎"}, {"code": "159870", "name": "化工ETF", "sector": "周期", "long": "谨慎"}, {"code": "005224", "name": "基建工程", "sector": "周期", "long": "谨慎"}, {"code": "516970", "name": "基建场内", "sector": "周期", "long": "谨慎"}, {"code": "014415", "name": "畜牧养殖", "sector": "周期", "long": "谨慎"}, {"code": "516670", "name": "畜牧场内", "sector": "周期", "long": "谨慎"}, {"code": "010770", "name": "天弘农业", "sector": "周期", "long": "谨慎"}, {"code": "512620", "name": "农业场内", "sector": "周期", "long": "谨慎"}, {"code": "008190", "name": "钢铁", "sector": "周期", "long": "谨慎"}, {"code": "515210", "name": "钢铁场内", "sector": "周期", "long": "谨慎"}, {"code": "008280", "name": "煤炭", "sector": "周期", "long": "谨慎"}, {"code": "515220", "name": "煤炭场内", "sector": "周期", "long": "谨慎"}, {"code": "008987", "name": "上海金", "sector": "周期", "long": "谨慎"}, {"code": "518600", "name": "金场内", "sector": "周期", "long": "谨慎"}, {"code": "165520", "name": "800有色", "sector": "周期", "long": "谨慎"}, {"code": "018853", "name": "标普石油", "sector": "周期", "long": "谨慎"}, {"code": "100039", "name": "通胀通缩", "sector": "周期", "long": "谨慎"}, {"code": "270023", "name": "全球精选", "sector": "海外", "long": "看好"}, {"code": "017731", "name": "全球产业升级", "sector": "海外", "long": "看好"}, {"code": "005698", "name": "全球科技先锋", "sector": "海外", "long": "看好"}, {"code": "018230", "name": "全球优质企业", "sector": "海外", "long": "看好"}, {"code": "100055", "name": "全球科技互联网", "sector": "海外", "long": "看好"}, {"code": "016702", "name": "海外量化", "sector": "海外", "long": "看好"}, {"code": "000043", "name": "美国成长", "sector": "海外", "long": "看好"}, {"code": "040046", "name": "纳斯达克", "sector": "海外", "long": "看好"}, {"code": "006479", "name": "广发纳斯达克", "sector": "海外", "long": "看好"}, {"code": "018147", "name": "新兴市场", "sector": "海外", "long": "看好"}, {"code": "008254", "name": "华宝致远", "sector": "海外", "long": "谨慎"}, {"code": "006328", "name": "中概互联网", "sector": "海外", "long": "看好"}, {"code": "513050", "name": "中概互联网ETF", "sector": "海外", "long": "看好"}, {"code": "000979", "name": "港股深", "sector": "海外", "long": "谨慎"}, {"code": "005555", "name": "恒生国企ETF", "sector": "海外", "long": "谨慎"}, {"code": "159954", "name": "恒生国企场内", "sector": "海外", "long": "谨慎"}, {"code": "013402", "name": "恒生科技", "sector": "海外", "long": "看好"}, {"code": "012769", "name": "动漫游戏", "sector": "文娱", "long": "谨慎"}, {"code": "159869", "name": "动漫游戏场内", "sector": "文娱", "long": "谨慎"}, {"code": "004753", "name": "传媒", "sector": "文娱", "long": "谨慎"}, {"code": "512980", "name": "传媒场内", "sector": "文娱", "long": "谨慎"}, {"code": "000390", "name": "华商优势", "sector": "主动混合", "long": "谨慎"}, {"code": "166301", "name": "华商新趋势", "sector": "主动混合", "long": "谨慎"}, {"code": "720001", "name": "财通价值动量", "sector": "主动混合", "long": "谨慎"}, {"code": "001170", "name": "宏利复兴", "sector": "主动混合", "long": "谨慎"}, {"code": "001412", "name": "德邦鑫星", "sector": "主动混合", "long": "谨慎"}, {"code": "001438", "name": "瑞享灵活", "sector": "主动混合", "long": "谨慎"}, {"code": "001048", "name": "新兴产业", "sector": "主动混合", "long": "谨慎"}, {"code": "025942", "name": "广发新动力", "sector": "主动混合", "long": "谨慎"}, {"code": "002163", "name": "东方惠新", "sector": "主动混合", "long": "谨慎"}, {"code": "001194", "name": "稳健回报", "sector": "主动混合", "long": "谨慎"}, {"code": "515250", "name": "智能汽车场内", "sector": "科技", "long": "看好"}, {"code": "013292", "name": "富国智能汽车", "sector": "科技", "long": "看好"}, {"code": "008586", "name": "华夏人工智能", "sector": "科技", "long": "看好"}, {"code": "028091", "name": "航天航空行业", "sector": "军工", "long": "看好"}, {"code": "023918", "name": "自由现金流", "sector": "宽基", "long": "谨慎"}, {"code": "159201", "name": "自由现金流场内", "sector": "宽基", "long": "看好"}, {"code": "019062", "name": "易方达软件", "sector": "科技", "long": "看好"}, {"code": "562930", "name": "软件易方达场内", "sector": "科技", "long": "看好"}, {"code": "017512", "name": "北证50", "sector": "宽基", "long": "谨慎"}, {"code": "018099", "name": "保险", "sector": "金融", "long": "谨慎"}, {"code": "020686", "name": "科创新材料", "sector": "科技", "long": "看好"}, {"code": "588160", "name": "科创新材料场内", "sector": "科技", "long": "看好"}, {"code": "007786", "name": "一带一路", "sector": "周期", "long": "谨慎"}, {"code": "515150", "name": "一带一路场内", "sector": "周期", "long": "谨慎"}, {"code": "011036", "name": "稀土产业", "sector": "周期", "long": "谨慎"}, {"code": "013476", "name": "智能电动车", "sector": "新能源", "long": "看好"}, {"code": "019170", "name": "云计算", "sector": "科技", "long": "看好"}];
+const FUNDS = [{"code": "001549", "name": "天弘上证50ETF", "sector": "宽基", "long": "谨慎"}, {"code": "530000", "name": "天弘上证50场内", "sector": "宽基", "long": "看好"}, {"code": "006021", "name": "广发沪深300", "sector": "宽基", "long": "谨慎"}, {"code": "510300", "name": "沪深300ETF", "sector": "宽基", "long": "看好"}, {"code": "011609", "name": "易方达科创50", "sector": "宽基", "long": "谨慎"}, {"code": "588080", "name": "科创50场内", "sector": "宽基", "long": "看好"}, {"code": "019817", "name": "广发创业板ETF", "sector": "宽基", "long": "谨慎"}, {"code": "159952", "name": "创业板场内", "sector": "宽基", "long": "看好"}, {"code": "588000", "name": "科创50ETF华夏", "sector": "宽基", "long": "看好"}, {"code": "013305", "name": "科创创业50", "sector": "宽基", "long": "看好"}, {"code": "020465", "name": "招商半导体", "sector": "科技", "long": "看好"}, {"code": "561980", "name": "半导体设备ETF", "sector": "科技", "long": "看好"}, {"code": "020482", "name": "机器人", "sector": "科技", "long": "看好"}, {"code": "560770", "name": "机器人ETF", "sector": "科技", "long": "看好"}, {"code": "020900", "name": "通信设备", "sector": "科技", "long": "看好"}, {"code": "515880", "name": "通信ETF", "sector": "科技", "long": "看好"}, {"code": "024195", "name": "卫星", "sector": "科技", "long": "看好"}, {"code": "159206", "name": "卫星ETF", "sector": "科技", "long": "看好"}, {"code": "012734", "name": "人工智能", "sector": "科技", "long": "看好"}, {"code": "006503", "name": "集成电路", "sector": "科技", "long": "看好"}, {"code": "001072", "name": "智能装备", "sector": "科技", "long": "看好"}, {"code": "022364", "name": "永赢科技", "sector": "科技", "long": "看好"}, {"code": "019830", "name": "数字产业", "sector": "科技", "long": "看好"}, {"code": "016664", "name": "高端制造", "sector": "科技", "long": "看好"}, {"code": "008989", "name": "科技创新", "sector": "科技", "long": "看好"}, {"code": "009049", "name": "易方达高端", "sector": "科技", "long": "看好"}, {"code": "159852", "name": "软件服务ETF", "sector": "科技", "long": "看好"}, {"code": "012621", "name": "软件服务场内", "sector": "科技", "long": "看好"}, {"code": "002170", "name": "东吴移动", "sector": "科技", "long": "看好"}, {"code": "017877", "name": "新能源", "sector": "新能源", "long": "看好"}, {"code": "018926", "name": "电池", "sector": "新能源", "long": "看好"}, {"code": "019875", "name": "稀有金属", "sector": "新能源", "long": "看好"}, {"code": "001410", "name": "信澳新能源", "sector": "新能源", "long": "看好"}, {"code": "161028", "name": "新能源汽车", "sector": "新能源", "long": "看好"}, {"code": "501226", "name": "全球新能源", "sector": "新能源", "long": "看好"}, {"code": "019058", "name": "绿色电力", "sector": "新能源", "long": "看好"}, {"code": "260112", "name": "基建能源", "sector": "新能源", "long": "看好"}, {"code": "013817", "name": "光伏", "sector": "新能源", "long": "看好"}, {"code": "516290", "name": "光伏场内", "sector": "新能源", "long": "看好"}, {"code": "159755", "name": "电池ETF", "sector": "新能源", "long": "看好"}, {"code": "159608", "name": "稀有金属ETF", "sector": "新能源", "long": "看好"}, {"code": "159611", "name": "电力ETF", "sector": "新能源", "long": "看好"}, {"code": "016185", "name": "电力公用", "sector": "新能源", "long": "谨慎"}, {"code": "006113", "name": "创新药", "sector": "医药", "long": "看好"}, {"code": "501009", "name": "生物科技", "sector": "医药", "long": "看好"}, {"code": "159892", "name": "恒生医药ETF", "sector": "医药", "long": "看好"}, {"code": "015945", "name": "国防军工", "sector": "军工", "long": "看好"}, {"code": "512560", "name": "军工ETF", "sector": "军工", "long": "看好"}, {"code": "025732", "name": "航天航空", "sector": "军工", "long": "看好"}, {"code": "161725", "name": "白酒", "sector": "消费", "long": "谨慎"}, {"code": "000083", "name": "消费行业", "sector": "消费", "long": "谨慎"}, {"code": "012857", "name": "主要消费", "sector": "消费", "long": "谨慎"}, {"code": "159928", "name": "消费场内", "sector": "消费", "long": "谨慎"}, {"code": "560880", "name": "家电场内", "sector": "消费", "long": "看好"}, {"code": "015040", "name": "食品饮料", "sector": "消费", "long": "谨慎"}, {"code": "159736", "name": "食品饮料场内", "sector": "消费", "long": "谨慎"}, {"code": "512690", "name": "酒ETF", "sector": "消费", "long": "谨慎"}, {"code": "005064", "name": "家用电器", "sector": "消费", "long": "谨慎"}, {"code": "159732", "name": "消费电子ETF", "sector": "消费", "long": "看好"}, {"code": "001469", "name": "金融地产", "sector": "金融", "long": "谨慎"}, {"code": "159940", "name": "金融地产场内", "sector": "金融", "long": "谨慎"}, {"code": "012874", "name": "证券指数", "sector": "金融", "long": "谨慎"}, {"code": "005663", "name": "金融精选", "sector": "金融", "long": "谨慎"}, {"code": "161029", "name": "银行指数", "sector": "金融", "long": "谨慎"}, {"code": "006697", "name": "华宝银行", "sector": "金融", "long": "谨慎"}, {"code": "512800", "name": "银行场内", "sector": "金融", "long": "谨慎"}, {"code": "512880", "name": "证券ETF", "sector": "金融", "long": "谨慎"}, {"code": "015896", "name": "化工指数", "sector": "周期", "long": "谨慎"}, {"code": "159870", "name": "化工ETF", "sector": "周期", "long": "谨慎"}, {"code": "005224", "name": "基建工程", "sector": "周期", "long": "谨慎"}, {"code": "516970", "name": "基建场内", "sector": "周期", "long": "谨慎"}, {"code": "014415", "name": "畜牧养殖", "sector": "周期", "long": "谨慎"}, {"code": "516670", "name": "畜牧场内", "sector": "周期", "long": "谨慎"}, {"code": "010770", "name": "天弘农业", "sector": "周期", "long": "谨慎"}, {"code": "512620", "name": "农业场内", "sector": "周期", "long": "谨慎"}, {"code": "008190", "name": "钢铁", "sector": "周期", "long": "谨慎"}, {"code": "515210", "name": "钢铁场内", "sector": "周期", "long": "谨慎"}, {"code": "008280", "name": "煤炭", "sector": "周期", "long": "谨慎"}, {"code": "515220", "name": "煤炭场内", "sector": "周期", "long": "谨慎"}, {"code": "008987", "name": "上海金", "sector": "周期", "long": "谨慎"}, {"code": "518600", "name": "金场内", "sector": "周期", "long": "谨慎"}, {"code": "165520", "name": "800有色", "sector": "周期", "long": "谨慎"}, {"code": "018853", "name": "标普石油", "sector": "周期", "long": "谨慎"}, {"code": "100039", "name": "通胀通缩", "sector": "周期", "long": "谨慎"}, {"code": "270023", "name": "全球精选", "sector": "海外", "long": "看好"}, {"code": "017731", "name": "全球产业升级", "sector": "海外", "long": "看好"}, {"code": "005698", "name": "全球科技先锋", "sector": "海外", "long": "看好"}, {"code": "018230", "name": "全球优质企业", "sector": "海外", "long": "看好"}, {"code": "100055", "name": "全球科技互联网", "sector": "海外", "long": "看好"}, {"code": "016702", "name": "海外量化", "sector": "海外", "long": "看好"}, {"code": "000043", "name": "美国成长", "sector": "海外", "long": "看好"}, {"code": "040046", "name": "纳斯达克", "sector": "海外", "long": "看好"}, {"code": "006479", "name": "广发纳斯达克", "sector": "海外", "long": "看好"}, {"code": "018147", "name": "新兴市场", "sector": "海外", "long": "看好"}, {"code": "008254", "name": "华宝致远", "sector": "海外", "long": "谨慎"}, {"code": "006328", "name": "中概互联网", "sector": "海外", "long": "看好"}, {"code": "513050", "name": "中概互联网ETF", "sector": "海外", "long": "看好"}, {"code": "000979", "name": "港股深", "sector": "海外", "long": "谨慎"}, {"code": "005555", "name": "恒生国企ETF", "sector": "海外", "long": "谨慎"}, {"code": "159954", "name": "恒生国企场内", "sector": "海外", "long": "谨慎"}, {"code": "013402", "name": "恒生科技", "sector": "海外", "long": "看好"}, {"code": "012769", "name": "动漫游戏", "sector": "文娱", "long": "谨慎"}, {"code": "159869", "name": "动漫游戏场内", "sector": "文娱", "long": "谨慎"}, {"code": "004753", "name": "传媒", "sector": "文娱", "long": "谨慎"}, {"code": "512980", "name": "传媒场内", "sector": "文娱", "long": "谨慎"}, {"code": "000390", "name": "华商优势", "sector": "主动混合", "long": "谨慎"}, {"code": "166301", "name": "华商新趋势", "sector": "主动混合", "long": "谨慎"}, {"code": "720001", "name": "财通价值动量", "sector": "主动混合", "long": "谨慎"}, {"code": "001170", "name": "宏利复兴", "sector": "主动混合", "long": "谨慎"}, {"code": "001412", "name": "德邦鑫星", "sector": "主动混合", "long": "谨慎"}, {"code": "001438", "name": "瑞享灵活", "sector": "主动混合", "long": "谨慎"}, {"code": "001048", "name": "新兴产业", "sector": "主动混合", "long": "谨慎"}, {"code": "025942", "name": "广发新动力", "sector": "主动混合", "long": "谨慎"}, {"code": "002163", "name": "东方惠新", "sector": "主动混合", "long": "谨慎"}, {"code": "001194", "name": "稳健回报", "sector": "主动混合", "long": "谨慎"}, {"code": "515250", "name": "智能汽车场内", "sector": "科技", "long": "看好"}, {"code": "013292", "name": "富国智能汽车", "sector": "科技", "long": "看好"}, {"code": "008586", "name": "华夏人工智能", "sector": "科技", "long": "看好"}, {"code": "028091", "name": "航天航空行业", "sector": "军工", "long": "看好"}, {"code": "023918", "name": "自由现金流", "sector": "宽基", "long": "谨慎"}, {"code": "159201", "name": "自由现金流场内", "sector": "宽基", "long": "看好"}, {"code": "019062", "name": "易方达软件", "sector": "科技", "long": "看好"}, {"code": "562930", "name": "软件易方达场内", "sector": "科技", "long": "看好"}, {"code": "017512", "name": "北证50", "sector": "宽基", "long": "谨慎"}, {"code": "018099", "name": "保险", "sector": "金融", "long": "谨慎"}, {"code": "020686", "name": "科创新材料", "sector": "科技", "long": "看好"}, {"code": "588160", "name": "科创新材料场内", "sector": "科技", "long": "看好"}, {"code": "007786", "name": "一带一路", "sector": "周期", "long": "谨慎"}, {"code": "515150", "name": "一带一路场内", "sector": "周期", "long": "谨慎"}, {"code": "011036", "name": "稀土产业", "sector": "周期", "long": "谨慎"}, {"code": "013476", "name": "智能电动车", "sector": "新能源", "long": "看好"}, {"code": "019170", "name": "云计算", "sector": "科技", "long": "看好"}, {"code": "014674", "name": "港股通互联网", "sector": "海外", "long": "看好"}, {"code": "159792", "name": "港股通互联网场内", "sector": "海外", "long": "看好"}, {"code": "159698", "name": "粮食场内", "sector": "周期", "long": "谨慎"}, {"code": "021087", "name": "粮食产业", "sector": "周期", "long": "谨慎"}, {"code": "023885", "name": "金融科技", "sector": "科技", "long": "看好"}, {"code": "516100", "name": "金融科技场内", "sector": "科技", "long": "看好"}, {"code": "010365", "name": "香港银行", "sector": "金融", "long": "谨慎"}, {"code": "012738", "name": "创新药广发", "sector": "医药", "long": "看好"}, {"code": "515120", "name": "创新药场内", "sector": "医药", "long": "看好"}, {"code": "001630", "name": "计算机", "sector": "科技", "long": "看好"}, {"code": "159998", "name": "计算机场内", "sector": "科技", "long": "看好"}, {"code": "020904", "name": "工程机械", "sector": "周期", "long": "谨慎"}, {"code": "560280", "name": "工程机械场内", "sector": "周期", "long": "谨慎"}, {"code": "016900", "name": "碳中和", "sector": "新能源", "long": "看好"}, {"code": "562990", "name": "碳中和场内", "sector": "新能源", "long": "看好"}, {"code": "007883", "name": "医药易方达", "sector": "医药", "long": "看好"}, {"code": "512010", "name": "医药ETF场内", "sector": "医药", "long": "看好"}, {"code": "025857", "name": "电网设备", "sector": "新能源", "long": "看好"}, {"code": "159326", "name": "电网设备场内", "sector": "新能源", "long": "看好"}, {"code": "161715", "name": "大宗商品", "sector": "周期", "long": "谨慎"}, {"code": "020969", "name": "全球商品QDII", "sector": "海外", "long": "谨慎"}];
 
 /* ================= 数据加载（script 标签方式，无跨域问题） ================= */
 const FUND_GLOBALS = ["Data_netWorthTrend","Data_ACWorthTrend","fS_name","fS_code","fund_sourceRate","fund_Rate","fund_minsg","stockCodes","zqCodes","stockCodesNew","Data_fluctuationScale","Data_holderStructure","Data_assetAllocation","Data_performanceEvaluation","Data_rateInSimilarType","Data_rateInSimilarPersent","Data_currentFundManager","Data_buySedemption","syl_1n","syl_6y","syl_3y","syl_1y","Data_grandTotal","ishb"];
@@ -693,8 +720,8 @@ function analyzeFund(code, vals, ts, predData, marketFactor, profile){
 
 /* ======== 第一层：市场大环境（A股4指数 + 美股QQQ/VOO 全球风险偏好过滤器） ======== */
 let MKT_STATE = null, ENV_DETAIL = null, ENV = null, ENV_RAW = {}, ENV_PT = {};
-/* CN=A股自身强弱；US=全球风险偏好风向标。QQQ≈纳指100(513100)，VOO≈标普500(513500) */
-const ENV_INDEX = [["510050","上证50","CN"],["510300","沪深300","CN"],["588000","科创50","CN"],["159915","创业板","CN"],["513100","QQQ·纳指100","US"],["513500","VOO·标普500","US"],["513880","日经225","JP"],["513310","韩国·中韩半导体","KR"]];
+/* CN=A股自身强弱；US=全球风险偏好风向标。QQQ≈纳指100(513100)，VOO≈标普500(513500)；JP/KR=亚太修正；GB=欧洲参考(富时100, 用建信富时100 QDII 539003算趋势, 仅参考不计入加成) */
+const ENV_INDEX = [["510050","上证50","CN"],["510300","沪深300","CN"],["588000","科创50","CN"],["159915","创业板","CN"],["513100","QQQ·纳指100","US"],["513500","VOO·标普500","US"],["513880","日经225","JP"],["513310","韩国·中韩半导体","KR"],["539003","英国·富时100","GB"]];
 
 /* 单指数趋势：价格在MA20上且MA20>MA60=牛，反之为熊，其余震荡 */
 function indexTrend(vals){
@@ -737,9 +764,186 @@ function jointEnv(parts){
   const bulls = parts.filter(p=>p.趋势==="牛").length, bears = parts.filter(p=>p.趋势==="熊").length;
   const hs = parts.find(p=>p.name==="沪深300");
   const jp = asia.find(p=>p.mkt==="JP"), kr = asia.find(p=>p.mkt==="KR");
+  /* 欧洲参考：英国富时100，只展示不计入加成 */
+  const gb = parts.find(p=>p.mkt==="GB");
   return {状态, 细分, 加成, 解读, cn状态, qqq, voo, 亚太注, bulls, bears,
-          日经: jp ? dot(jp.趋势) : "🟡", 韩国: kr ? dot(kr.趋势) : "🟡",
-          描述:`A股${cn状态} QQQ${qqq} VOO${voo} 日经${jp?dot(jp.趋势):"-"} 韩国${kr?dot(kr.趋势):"-"} · 沪深300 ${hs&&hs.chg>=0?"+":""}${hs?hs.chg:"-"}%`};
+          日经: jp ? dot(jp.趋势) : "🟡", 韩国: kr ? dot(kr.趋势) : "🟡", 英国: gb && !gb.error ? dot(gb.趋势) : "🟡",
+          描述:`A股${cn状态} QQQ${qqq} VOO${voo} 日经${jp?dot(jp.趋势):"-"} 韩国${kr?dot(kr.趋势):"-"} 英国${gb&&!gb.error?dot(gb.趋势):"-"} · 沪深300 ${hs&&hs.chg>=0?"+":""}${hs?hs.chg:"-"}%`};
+}
+
+/* ======== 全球宏观参考（美元指数/美债/黄金/币/美联储/非农，只参考不计入信号） ======== */
+let MACRO = {}, NFP = null, NEWS = null;
+async function loadMacro(){
+  MACRO = {};
+  /* 东财：美元指数 + COMEX黄金 + 黄金9999（和指数点位同通道，稳定） */
+  try{
+    const j = await (await fetch("https://push2delay.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=100.UDI,101.GC00Y,118.AU9999&fields=f12,f14,f2,f3")).json();
+    ((j.data&&j.data.diff)||[]).forEach(x=>{ if(x.f2!=null) MACRO[x.f12] = {nm:x.f14, pt:x.f2, chg:x.f3}; });
+  }catch(e){}
+  /* CNBC：美债2/10/30年收益率 + 比特币/以太坊（一个请求全拿，允许跨域） */
+  try{
+    const ctrl = new AbortController(); const to = setTimeout(()=>ctrl.abort(), 10000);
+    const j = await (await fetch("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=US2Y%7CUS10Y%7CUS30Y%7CBTC.CM%3D%7CETH.CM%3D&requestMethod=itv&noform=1&partnerId=2&fund=1&output=json", {signal:ctrl.signal})).json();
+    clearTimeout(to);
+    ((j.FormattedQuoteResult||{}).FormattedQuote||[]).forEach(q=>{
+      const last = parseFloat(String(q.last||"").replace(/[%$,+\s]/g,""));
+      const chgPct = parseFloat(String(q.change_pct||"").replace(/[%+]/g,""));
+      const chgAbs = parseFloat(String(q.change||"").replace(/[+]/g,""));
+      if(!isNaN(last)) MACRO[q.symbol] = {nm:q.name, pt:last, chg:isNaN(chgPct)?null:chgPct, chgAbs:isNaN(chgAbs)?null:chgAbs};
+    });
+  }catch(e){}
+  renderMacro();
+}
+/* 下次非农公布时间：未来最近的"第一个周五" */
+function nextNFPDate(){
+  const now = new Date();
+  for(let m=0; m<3; m++){
+    const d = new Date(now.getFullYear(), now.getMonth()+m, 1);
+    while(d.getDay()!==5) d.setDate(d.getDate()+1);
+    d.setHours(20,30); /* 北京时间20:30公布 */
+    if(d>now) return d;
+  }
+  return null;
+}
+/* 美国非农：FRED官方数据，月度更新 → 本地缓存10天，失败就用缓存 */
+async function loadNFP(){
+  const KEY = "fund_nfp_v1";
+  try{ const c = JSON.parse(localStorage.getItem(KEY)||"null"); if(c && c.data && Date.now()-c.ts < 10*864e5){ NFP = c.data; renderMacro(); return; } }catch(e){}
+  const targets = [["PAYEMS","https://fred.stlouisfed.org/graph/fredgraph.csv?id=PAYEMS"],
+                   ["UNRATE","https://fred.stlouisfed.org/graph/fredgraph.csv?id=UNRATE"]];
+  const wrap = u => [u, "https://api.allorigins.win/raw?url="+encodeURIComponent(u), "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u)];
+  const parsed = [];
+  for(const [id, u] of targets){
+    let csv = null;
+    for(const url of wrap(u)){
+      try{
+        const ctrl = new AbortController(); const to = setTimeout(()=>ctrl.abort(), 8000);
+        const t = await (await fetch(url, {signal:ctrl.signal})).text();
+        clearTimeout(to);
+        if(t && t.slice(0,30).indexOf("DATE")>=0){ csv = t; break; }
+      }catch(e){}
+    }
+    if(!csv) return; /* 拿不到就保持旧值 */
+    parsed.push(csv.trim().split("\n").slice(1).map(l=>l.split(",")).filter(p=>p[1] && p[1]!=="."));
+  }
+  const pay = parsed[0], un = parsed[1];
+  if(!pay || pay.length<2 || !un || !un.length) return;
+  const last = pay[pay.length-1], prev = pay[pay.length-2];
+  NFP = { month:last[0].slice(0,7), add:+((+last[1]-+prev[1])/10).toFixed(1) /* 千人→万人 */, unrate:+un[un.length-1][1] };
+  try{ localStorage.setItem(KEY, JSON.stringify({ts:Date.now(), data:NFP})); }catch(e){}
+  renderMacro();
+}
+function renderMacro(){
+  const g = $("macroGrid"); if(!g) return;
+  const chip = (t, v, sub, color, sym) => `<div class="env-idx"${sym?` style="cursor:pointer" onclick="openMacroDrawer('${sym}')" title="点击查看K线走势"`:""}><div class="nm" style="font-size:12px;color:#8b949e">${t}</div><div class="tr" style="color:${color||"#c9d1d9"}">${v}</div>${sub?`<div class="mq-sub">${sub}</div>`:""}</div>`;
+  const pct = (c, suf) => c==null ? "" : `<span class="${c>=0?"up":"down"}"> ${c>=0?"+":""}${c}${suf||"%"}</span>`;
+  let h = `<div class="env-grid">`;
+  const udi = MACRO["UDI"];
+  h += chip("🇺🇸 美元指数", udi ? `<b>${udi.pt}</b>${pct(udi.chg)}` : "获取失败", udi ? (udi.pt>=105?"美元强势 · 压制黄金/新兴市场":udi.pt<100?"美元偏弱 · 利好黄金/新兴市场":"中性区间") : "", null, "UDI");
+  const y2 = MACRO["US2Y"], y10 = MACRO["US10Y"], y30 = MACRO["US30Y"];
+  h += chip("美债2年（短）", y2 ? `<b>${y2.pt}%</b>` : "获取失败", y2&&y2.chgAbs!=null?`变动 ${y2.chgAbs>=0?"+":""}${y2.chgAbs}`:"反映加息降息预期", null, "US2Y");
+  h += chip("美债10年（中）", y10 ? `<b>${y10.pt}%</b>` : "获取失败", y10 ? (y10.pt>=4.5?"偏高 · 压制科技股估值":"温和") : "", null, "US10Y");
+  h += chip("美债30年（长）", y30 ? `<b>${y30.pt}%</b>` : "获取失败", y30&&y30.chgAbs!=null?`变动 ${y30.chgAbs>=0?"+":""}${y30.chgAbs}`:"", null, "US30Y");
+  if(y2 && y10){
+    const sp = +(y10.pt-y2.pt).toFixed(2);
+    h += chip("10Y-2Y 利差", `<b style="color:${sp<0?"#f85149":"#3fb950"}">${sp>=0?"+":""}${sp}</b>`, sp<0 ? "⚠️ 倒挂 · 历史上是衰退预警" : "正利差 · 结构正常");
+  }
+  const gc = MACRO["GC00Y"], au = MACRO["AU9999"];
+  h += chip("🥇 COMEX黄金", gc ? `<b>$${Number(gc.pt).toLocaleString()}</b>${pct(gc.chg)}` : "获取失败", "美元/盎司 · 避险情绪风向标", null, "GC00Y");
+  h += chip("🥇 黄金9999", au ? `<b>${au.pt}</b>${pct(au.chg)}` : "获取失败", "元/克 · 国内金价", null, "AU9999");
+  const btc = MACRO["BTC.CM="], eth = MACRO["ETH.CM="];
+  h += chip("₿ 比特币", btc ? `<b>$${Number(btc.pt).toLocaleString()}</b>${pct(btc.chg)}` : "获取失败", "避险/投机资金风向标", null, "BTC.CM=");
+  h += chip("Ξ 以太坊", eth ? `<b>$${Number(eth.pt).toLocaleString()}</b>${pct(eth.chg)}` : "获取失败", "加密市场情绪", null, "ETH.CM=");
+  /* 非农卡 */
+  const nx = nextNFPDate();
+  h += chip("🇺🇸 美国非农（月度）",
+    NFP ? `<b>${NFP.add>=0?"+":""}${NFP.add}万</b> <span style="font-size:12px;color:#8b949e">${NFP.month}</span>` : "暂未获取",
+    (NFP ? `失业率 ${NFP.unrate}% · ` : "") + (nx ? `下次公布 ${nx.getMonth()+1}月${nx.getDate()}日` : "每月第一个周五"));
+  h += `</div>`;
+  /* 美联储观察入口 */
+  h += `<div class="ext-links" style="margin-top:10px"><span style="font-size:12px;color:#8b949e;line-height:26px">🏛 美联储加息/降息观察 →</span>
+    <a href="https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html" target="_blank" rel="noopener">CME 利率概率（FedWatch）</a>
+    <a href="https://www.jin10.com/" target="_blank" rel="noopener">金十数据（财经日历）</a>
+    <a href="https://fred.stlouisfed.org/series/PAYEMS" target="_blank" rel="noopener">FRED 非农原始数据</a></div>`;
+  g.innerHTML = h;
+}
+/* ======== 全球财经快讯（东财7×24，<script>方式加载天然跨域） ======== */
+function loadNews(){
+  NEWS = null;
+  const s = document.createElement("script");
+  s.src = "https://newsapi.eastmoney.com/kuaixun/v1/getlist_101_ajaxResult_50_1_.html?_=" + Date.now();
+  s.onload = ()=>{ try{ NEWS = (window.ajaxResult && window.ajaxResult.LivesList) || []; }catch(e){ NEWS = []; } renderNews(); };
+  s.onerror = ()=>{ NEWS = []; renderNews(); };
+  document.body.appendChild(s);
+}
+function renderNews(){
+  const g = $("newsGrid"); if(!g) return;
+  const kw = /(美联储|非农|加息|降息|利率|央行|黄金|白银|原油|A股|沪指|美股|纳指|标普|日经|比特币|以太坊|ETF|基金)/;
+  let h = "";
+  if(NEWS && NEWS.length){
+    h += `<div class="news-list">` + NEWS.slice(0,15).map(n=>{
+      const t = (n.showtime||"").slice(5,16);
+      const title = n.simtitle || n.title || "";
+      const hot = kw.test(title);
+      return `<div class="news-item"><span class="news-time">${t}</span><a href="${n.url_w}" target="_blank" rel="noopener" class="${hot?"news-hl":""}">${title}</a></div>`;
+    }).join("") + `</div>`;
+  } else if(NEWS && !NEWS.length){
+    h += `<span style="color:#8b949e">快讯暂时获取失败，点下方链接直接看 →</span>`;
+  } else { h += `<span style="color:#8b949e">加载中…</span>`; }
+  h += `<div class="ext-links"><span style="font-size:12px;color:#8b949e;line-height:26px">更多新闻源 →</span>
+    <a href="https://www.cls.cn/telegraph" target="_blank" rel="noopener">财联社·电报</a>
+    <a href="https://wallstreetcn.com/live" target="_blank" rel="noopener">华尔街见闻·快讯</a>
+    <a href="https://www.jin10.com/" target="_blank" rel="noopener">金十数据</a>
+    <a href="https://cn.wsj.com/" target="_blank" rel="noopener">华尔街日报中文网</a>
+    <a href="https://kuaixun.eastmoney.com/" target="_blank" rel="noopener">东方财富7×24</a></div>`;
+  g.innerHTML = h;
+}
+/* ======== 信号追踪：每天存档买入/卖出信号+净值，5/20/60/90天后算胜率（3个月预判准确率） ======== */
+let SIG_LOG = (()=>{ try{ return JSON.parse(localStorage.getItem("fund_sig_log_v1")||"{}"); }catch(e){ return {}; } })();
+function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function trackSignals(){
+  try{
+    const buys = ["强烈买入","买入","加仓","补仓"], sells = ["清仓","减仓","止盈"];
+    const snap = RESULTS.filter(r=>buys.includes(r.建议)||sells.includes(r.建议))
+      .map(r=>({c:r.代码, n:r.名称, a:r.建议, v:r.净值, side:buys.includes(r.建议)?"B":"S"}));
+    if(snap.length) SIG_LOG[todayStr()] = snap;
+    const keys = Object.keys(SIG_LOG).sort();
+    while(keys.length>130){ delete SIG_LOG[keys.shift()]; } /* 只留最近约4个月 */
+    localStorage.setItem("fund_sig_log_v1", JSON.stringify(SIG_LOG));
+  }catch(e){}
+}
+function renderSigTrack(){
+  const g = $("sigTrackGrid"); if(!g) return;
+  const dates = Object.keys(SIG_LOG||{}).sort();
+  if(!dates.length){ g.innerHTML = `<span style="color:#8b949e">从今天起自动累积信号档案（只存在你自己浏览器）。首批信号满5天后开始显示胜率，满90天显示"3个月预判准确率"。</span>`; return; }
+  const nowV = {}; RESULTS.forEach(r=>{ nowV[r.代码] = r.净值; });
+  const t0 = new Date(todayStr()).getTime(), dayMs = 864e5;
+  const ageOf = d => Math.floor((t0 - new Date(d).getTime())/dayMs);
+  let chips = "";
+  [[5,"满5天"],[20,"满20天"],[60,"满60天"],[90,"满90天 · 3个月预判"]].forEach(([days,label])=>{
+    let bHit=0,bN=0,bChg=0,sHit=0,sN=0;
+    dates.forEach(d=>{
+      if(ageOf(d)<days) return;
+      (SIG_LOG[d]||[]).forEach(e=>{
+        const cur = nowV[e.c]; if(cur==null || !e.v) return;
+        const chg = (cur-e.v)/e.v*100;
+        if(e.side==="B"){ bN++; bChg+=chg; if(chg>0) bHit++; } else { sN++; if(chg<0) sHit++; }
+      });
+    });
+    if(!bN && !sN) return;
+    chips += `<div class="sigt-chip">📌 ${label}` +
+      (bN ? `<br>买入信号 ${bN}只 · 胜率 <b style="color:${bHit/bN>=0.5?"#ff4d4f":"#00c853"}">${Math.round(bHit/bN*100)}%</b> · 平均 <span class="${bChg>=0?"up":"down"}">${bChg/bN>=0?"+":""}${(bChg/bN).toFixed(1)}%</span>` : "") +
+      (sN ? `<br>卖出信号 ${sN}只 · 正确率 <b style="color:${sHit/sN>=0.5?"#ff4d4f":"#00c853"}">${Math.round(sHit/sN*100)}%</b>` : "") + `</div>`;
+  });
+  const rows = dates.slice(-8).reverse().map(d=>{
+    const list = SIG_LOG[d]||[];
+    const b = list.filter(e=>e.side==="B"), s = list.filter(e=>e.side==="S");
+    const bChg = b.map(e=>nowV[e.c]!=null ? (nowV[e.c]-e.v)/e.v*100 : null).filter(x=>x!=null);
+    const avg = bChg.length ? bChg.reduce((a,x)=>a+x,0)/bChg.length : null;
+    const age = ageOf(d);
+    return `<div class="news-item"><span class="news-time">${d.slice(5)}</span><span style="flex:1;color:#c9d1d9">买入 ${b.length} 只 · 卖出 ${s.length} 只${b.length?` <span style="color:#8b949e">（${b.slice(0,4).map(e=>e.n).join("、")}${b.length>4?"…":""}）</span>`:""}</span><span style="color:#8b949e;font-size:12px">${age>0?age+"天前":"今天"}</span>${avg!=null?`<span class="${avg>=0?"up":"down"}" style="font-size:12px">买入信号至今 ${avg>=0?"+":""}${avg.toFixed(1)}%</span>`:""}</div>`;
+  }).join("");
+  g.innerHTML = (chips || `<span style="color:#8b949e">信号档案已累积 ${dates.length} 天，最早一批满5天后开始显示胜率。</span>`) + (rows ? `<div style="margin-top:6px">${rows}</div>` : "");
 }
 
 /* ======== 第二层：指数估值（真实PE/PB历史分位，数据源：蛋卷基金） ======== */
@@ -770,6 +974,8 @@ const IDX_RULES = [
   [/白酒|酒ETF|食品饮料/, "SZ399997"],
   [/医疗|创新药|生物/, "SZ399989"],
   [/医药|中药/, "SH000991"],
+  [/香港银行/, "HKHSI"],
+  [/金融科技|数字货币/, "CSI930986"],
   [/银行/, "SZ399986"],
   [/红利/, "SH000922"],
   [/新能源|光伏|电池|碳中和/, "SZ399417"],
@@ -785,6 +991,7 @@ const IDX_RULES = [
   [/恒生|港股/, "HKHSI"],
   [/纳斯达克|纳指/, "NDX"],
   [/标普/, "SP500"],
+  [/商品/, "SZ399998"],
   [/全球|海外|美国|美股|QDII/, "SP500"],
   [/传媒|游戏|文娱|影视|动漫/, "SZ399971"],
   [/煤炭|有色|稀土|稀有金属|钢铁|资源|化工|周期|黄金/, "SZ399998"],
@@ -792,7 +999,7 @@ const IDX_RULES = [
   [/金融|保险/, "SZ399986"],
   [/智能汽车|智能电动|电动车/, "SZ399417"],
   [/家电|家居|汽车|电器/, "SH000989"],
-  [/消费|农业|养殖|畜牧/, "SH000932"],
+  [/消费|农业|养殖|畜牧|粮食/, "SH000932"],
   [/通信|5G/, "CSI931079"],
   [/人工智能|科技|软件|计算机|互联网|云|数据|AI/, "CSI931087"],
 ];
@@ -966,7 +1173,7 @@ function renderEnv(){
   if(ENV && ENV.cn状态){
     h += `<div class="env-overall" style="flex-direction:column;align-items:flex-start;gap:5px">
       <div style="font-size:17px;color:${sColor}">🌐 联合大环境：${sDot} ${ENV.状态} · ${ENV.细分}<span class="env-note" style="margin-left:8px">加成×${ENV.加成}${ENV.状态==="逆风"?' · <b style="color:#f85149">已自动降级买入信号、压缩仓位</b>':""}</span></div>
-      <div class="env-note">🌍 全球风险偏好过滤器：A股${ENV.cn状态} + QQQ${ENV.qqq} + VOO${ENV.voo} → <b style="color:${sColor}">${ENV.细分}</b> · ${ENV.解读}${ENV.亚太注?`<br>🌏 亚太参考：日经${ENV.日经} + 韩国${ENV.韩国} · ${ENV.亚太注}`:""}</div>
+      <div class="env-note">🌍 全球风险偏好过滤器：A股${ENV.cn状态} + QQQ${ENV.qqq} + VOO${ENV.voo} → <b style="color:${sColor}">${ENV.细分}</b> · ${ENV.解读}${ENV.亚太注?`<br>🌏 亚太参考：日经${ENV.日经} + 韩国${ENV.韩国} · ${ENV.亚太注}`:""}${ENV.英国?`<br>🇬🇧 欧洲参考：英国富时100${ENV.英国} · 仅作外围风向参考，不计入加成`:""}</div>
     </div>`;
   } else {
     h += `<div class="env-overall"><span class="dot" style="background:${sColor}"></span>当前大环境：${ENV?ENV.状态:"未知"}<span class="env-note">${ENV?ENV.描述:""} · 加成×${ENV?ENV.加成:"-"}</span></div>`;
@@ -1198,7 +1405,7 @@ window.closeDrawer = function(){ $("drawer").classList.remove("open"); $("dmask"
 $("dmask").onclick = closeDrawer;
 
 /* 大环境指数的真实点位行情（push2） */
-const IDX_PT = {"510050":"1.000016","510300":"1.000300","588000":"1.000688","159915":"0.399006","513100":"100.NDX","513500":"100.SPX","513880":"100.N225","513310":"100.KS11"};
+const IDX_PT = {"510050":"1.000016","510300":"1.000300","588000":"1.000688","159915":"0.399006","513100":"100.NDX","513500":"100.SPX","513880":"100.N225","513310":"100.KS11","539003":"100.FTSE"};
 
 /* 大环境指数卡片点击 → 弹出指数K线（与基金K线同一个抽屉） */
 window.openIdxDrawer = async function(code){
@@ -1256,7 +1463,7 @@ window.openIdxDrawer = async function(code){
     <div class="advice-box" style="border-left:3px solid ${色}">
       <div style="font-size:15px">📍 位置提醒: <b style="color:${色}">${行动}</b></div>
       <div style="margin-top:4px">${注意}</div>
-      <div style="color:#8b949e;font-size:12px;margin-top:4px">指数层面的位置参考 · 具体基金买卖以各自信号为准${meta[2]!=="CN"?" · 外盘点位与A股交易时段有时差":""}${code==="513310"?" · 点位为韩国KOSPI综合指数（该基金实际跟踪中韩半导体指数，走势接近）":""}</div>
+      <div style="color:#8b949e;font-size:12px;margin-top:4px">指数层面的位置参考 · 具体基金买卖以各自信号为准${meta[2]!=="CN"?" · 外盘点位与A股交易时段有时差":""}${code==="513310"?" · 点位为韩国KOSPI综合指数（该基金实际跟踪中韩半导体指数，走势接近）":""}${code==="539003"?" · 趋势用建信富时100(QDII场外)净值计算，滞后1个交易日；点位为富时100指数实时值，仅作欧洲风向参考":""}</div>
     </div>`;
   d.classList.add("open"); $("dmask").classList.add("open");
   if(dchart) dchart.dispose();
@@ -1292,6 +1499,131 @@ window.openIdxDrawer = async function(code){
       } else el.innerHTML = `<span>指数点位</span><b style="color:#8b949e">获取失败</b>`;
     }
   }catch(e){ const el=$("idxPt"); if(el) el.innerHTML=`<span>指数点位</span><b style="color:#8b949e">获取失败</b>`; }
+};
+
+/* ======== 宏观品种点击 → K线抽屉（东财K线 / FRED美债 / CoinGecko·币安 币价） ======== */
+const MACRO_META = {
+  "UDI":     {name:"美元指数", unit:"", src:"em", secid:"100.UDI", note:"洲际交易所美元指数 · 美元走强通常压制黄金与新兴市场"},
+  "US2Y":    {name:"美债2年收益率", unit:"%", src:"fred", fid:"DGS2", note:"美联储官方数据(FRED) · 每个交易日更新 · 最直接反映加息/降息预期"},
+  "US10Y":   {name:"美债10年收益率", unit:"%", src:"fred", fid:"DGS10", note:"美联储官方数据(FRED) · 每个交易日更新 · 4.5%以上偏高，压制科技股估值"},
+  "US30Y":   {name:"美债30年收益率", unit:"%", src:"fred", fid:"DGS30", note:"美联储官方数据(FRED) · 每个交易日更新"},
+  "GC00Y":   {name:"COMEX黄金", unit:" 美元/盎司", src:"em", secid:"101.GC00Y", note:"纽约商品交易所黄金期货 · 全球金价基准"},
+  "AU9999":  {name:"黄金9999", unit:" 元/克", src:"em", secid:"118.AU9999", note:"上海黄金交易所 · 国内金价基准"},
+  "BTC.CM=": {name:"比特币", unit:" 美元", src:"cg", id:"bitcoin", pair:"BTCUSDT", note:"加密货币风向标 · 7×24小时交易"},
+  "ETH.CM=": {name:"以太坊", unit:" 美元", src:"cg", id:"ethereum", pair:"ETHUSDT", note:"加密市场情绪 · 7×24小时交易"}
+};
+const MACRO_HIST = {};
+async function fetchMacroHist(key){
+  if(MACRO_HIST[key]) return MACRO_HIST[key];
+  const m = MACRO_META[key]; if(!m) return null;
+  let out = null;
+  if(m.src==="em"){
+    const dd = new Date(); dd.setFullYear(dd.getFullYear()-2);
+    const beg = dd.getFullYear()*10000 + (dd.getMonth()+1)*100 + dd.getDate();
+    for(const host of ["https://push2his.eastmoney.com","https://push2his1.eastmoney.com","https://push2his2.eastmoney.com"]){
+      try{
+        const ctrl = new AbortController(); const to = setTimeout(()=>ctrl.abort(), 8000);
+        const j = await (await fetch(`${host}/api/qt/stock/kline/get?secid=${m.secid}&fields1=f1,f2,f3&fields2=f51,f53&klt=101&fqt=0&beg=${beg}&end=20261231`, {signal:ctrl.signal})).json();
+        clearTimeout(to);
+        const kl = (j.data && j.data.klines) || [];
+        if(kl.length>30){ out = {ts:kl.map(s=>s.split(",")[0]), vals:kl.map(s=>+s.split(",")[1])}; break; }
+      }catch(e){}
+    }
+  } else if(m.src==="fred"){
+    const u = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${m.fid}`;
+    const tries = [u, "https://api.allorigins.win/raw?url="+encodeURIComponent(u), "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u)];
+    for(const url of tries){
+      try{
+        const ctrl = new AbortController(); const to = setTimeout(()=>ctrl.abort(), 8000);
+        const t = await (await fetch(url, {signal:ctrl.signal})).text();
+        clearTimeout(to);
+        if(t && t.slice(0,30).indexOf("DATE")>=0){
+          const rows = t.trim().split("\n").slice(1).map(l=>l.split(",")).filter(p=>p[1] && p[1]!==".");
+          const w = rows.slice(-500);
+          if(w.length>30){ out = {ts:w.map(p=>p[0]), vals:w.map(p=>+p[1])}; break; }
+        }
+      }catch(e){}
+    }
+  } else if(m.src==="cg"){
+    try{
+      const ctrl = new AbortController(); const to = setTimeout(()=>ctrl.abort(), 8000);
+      const j = await (await fetch(`https://api.coingecko.com/api/v3/coins/${m.id}/market_chart?vs_currency=usd&days=180`, {signal:ctrl.signal})).json();
+      clearTimeout(to);
+      if(j.prices && j.prices.length>30) out = {ts:j.prices.map(p=>new Date(p[0]).toISOString().slice(0,10)), vals:j.prices.map(p=>+p[1].toFixed(2))};
+    }catch(e){}
+    if(!out){
+      try{
+        const ctrl = new AbortController(); const to = setTimeout(()=>ctrl.abort(), 8000);
+        const j = await (await fetch(`https://api.binance.com/api/v3/klines?symbol=${m.pair}&interval=1d&limit=180`, {signal:ctrl.signal})).json();
+        clearTimeout(to);
+        if(Array.isArray(j) && j.length>30) out = {ts:j.map(k=>new Date(k[0]).toISOString().slice(0,10)), vals:j.map(k=>+k[4])};
+      }catch(e){}
+    }
+  }
+  if(out) MACRO_HIST[key] = out;
+  return out;
+}
+window.openMacroDrawer = async function(key){
+  const m = MACRO_META[key]; if(!m) return;
+  const d = $("drawer");
+  d.innerHTML = `<button class="close" onclick="closeDrawer()">✕</button>
+    <h2>${m.name} <span class="env-tag tag-US">宏观</span></h2>
+    <div class="fcode">全球宏观参考 · 只作参考，不计入买卖信号</div>
+    <div id="dchart" style="display:flex;align-items:center;justify-content:center;color:#8b949e;min-height:280px">历史数据加载中…</div>`;
+  d.classList.add("open"); $("dmask").classList.add("open");
+  const h = await fetchMacroHist(key);
+  if(!h){ const el = $("dchart"); if(el) el.innerHTML = "走势图暂时获取失败（海外数据源偶发不通，稍后再点试试）"; return; }
+  const vals = h.vals, ts = h.ts;
+  const cur = vals[vals.length-1], prev = vals[vals.length-2];
+  const chg = +((cur-prev)/prev*100).toFixed(2);
+  const t = vals.length>61 ? indexTrend(vals) : null;
+  const R20 = vals.length>21 ? +((cur/vals[vals.length-21]-1)*100).toFixed(1) : null;
+  const R60 = vals.length>61 ? +((cur/vals[vals.length-61]-1)*100).toFixed(1) : null;
+  const win = vals.slice(-365);
+  const 百分位 = Math.round(win.filter(v=>v<=cur).length/win.length*100);
+  const 高 = Math.max(...win), 低 = Math.min(...win);
+  const 距高 = +((cur-高)/高*100).toFixed(1), 距低 = +((cur-低)/低*100).toFixed(1);
+  const tColor = !t ? "#8b949e" : t.趋势==="牛" ? "#3fb950" : t.趋势==="熊" ? "#f85149" : "#e3b341";
+  const tName = !t ? "-" : t.趋势==="牛" ? "牛市" : t.趋势==="熊" ? "熊市" : "震荡";
+  const fmtV = v => v>=10000 ? Number(v.toFixed(0)).toLocaleString() : v>=100 ? v.toFixed(1) : v<10 ? v.toFixed(3) : v.toFixed(2);
+  d.innerHTML = `<button class="close" onclick="closeDrawer()">✕</button>
+    <h2>${m.name} <span class="env-tag tag-US">宏观</span></h2>
+    <div class="fcode">全球宏观参考 · 只作参考，不计入买卖信号</div>
+    <div class="advice-box">
+      <div style="font-size:16px">趋势: <b style="color:${tColor}">${tName}</b> · 最新 <b>${fmtV(cur)}${m.unit}</b> · 日变动 <b class="${cls(chg)}">${chg>=0?"+":""}${chg}%</b></div>
+      <div style="color:#8b949e;font-size:13px;margin-top:4px">${m.note}</div>
+    </div>
+    <div id="dchart"></div>
+    <div class="kv">
+      <div><span>最新值</span><b>${fmtV(cur)}${m.unit}</b></div>
+      <div><span>日变动</span><b class="${cls(chg)}">${chg>=0?"+":""}${chg}%</b></div>
+      <div><span>近20日 / 近60日</span><b><span class="${cls(R20)}">${R20!=null?(R20>0?"+":"")+R20+"%":"-"}</span> / <span class="${cls(R60)}">${R60!=null?(R60>0?"+":"")+R60+"%":"-"}</span></b></div>
+      <div><span>近1年历史位置</span><b>百分位 ${百分位}%</b></div>
+      <div><span>距1年高点 / 低点</span><b><span class="down">${距高}%</span> / <span class="up">+${距低}%</span></b></div>
+      <div><span>数据长度</span><b>${vals.length} 个交易日</b></div>
+    </div>
+    <div class="advice-box" style="border-left:3px solid #58a6ff">
+      <div style="color:#8b949e;font-size:12px">宏观品种只看大方向：美元/美债收益率上行 → 压制科技股与黄金；黄金走强 → 市场避险情绪浓；币圈大涨 → 全球投机情绪高。不直接构成买卖建议。</div>
+    </div>`;
+  if(dchart) dchart.dispose();
+  dchart = echarts.init($("dchart"));
+  const n = Math.min(180, vals.length);
+  const v2 = vals.slice(-n), t2 = ts.slice(-n);
+  const maAt = (arr,p,i)=> i<p-1 ? null : +(arr.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p).toFixed(2);
+  dchart.setOption({
+    backgroundColor:"transparent",
+    grid:{left:55,right:15,top:30,bottom:25},
+    tooltip:{ trigger:"axis" },
+    legend:{ textStyle:{color:"#8b949e"}, top:0, itemWidth:14 },
+    xAxis:{ type:"category", data:t2, axisLine:{lineStyle:{color:"#30363d"}}, axisLabel:{color:"#8b949e"} },
+    yAxis:{ type:"value", scale:true, axisLine:{lineStyle:{color:"#30363d"}}, splitLine:{lineStyle:{color:"#21262d"}}, axisLabel:{color:"#8b949e"} },
+    series:[
+      { name:"收盘", type:"line", data:v2, showSymbol:false, lineStyle:{color:"#58a6ff",width:2}, itemStyle:{color:"#58a6ff"} },
+      { name:"MA5", type:"line", data:v2.map((_,i)=>maAt(v2,5,i)), showSymbol:false, lineStyle:{color:"#ffcc00",width:1} },
+      { name:"MA10", type:"line", data:v2.map((_,i)=>maAt(v2,10,i)), showSymbol:false, lineStyle:{color:"#ff7b72",width:1} },
+      { name:"MA20", type:"line", data:v2.map((_,i)=>maAt(v2,20,i)), showSymbol:false, lineStyle:{color:"#d2a8ff",width:1} }
+    ]
+  });
 };
 
 /* ================= 信号名单弹窗 ================= */
@@ -1362,7 +1694,7 @@ window.showSector = function(sector){
 "use strict";
 /* ================= 主流程 ================= */
 function renderAll(){
-  renderCards(); renderMatrix(); renderSector(); renderTopList(); renderTable(); renderEnv(); renderVal(); renderETF(); renderRadar(); renderHoldings();
+  renderCards(); renderMatrix(); renderSector(); renderTopList(); renderTable(); renderEnv(); renderVal(); renderETF(); renderRadar(); renderHoldings(); renderSigTrack();
 }
 
 async function run(){
@@ -1372,7 +1704,7 @@ async function run(){
   RESULTS = []; FAILED = [];
 
   /* 第一层：先取市场大环境（A股4指数 + 美股QQQ/VOO） */
-  $("loadStatus").textContent = "获取市场大环境（A股+美股）…";
+  $("loadStatus").textContent = "获取市场大环境（A股+美股+亚太+欧洲）…";
   const idxRaw = {};
   ENV_DETAIL = await Promise.all(ENV_INDEX.map(async ([c, name, mkt])=>{
     const d = await loadFund(c);
@@ -1402,8 +1734,10 @@ async function run(){
   await loadIndexVal();
   /* 第三层：取ETF实时行情（量比+主力资金） */
   await loadETFQuotes();
+  /* 宏观参考 + 财经快讯：独立通道，不阻塞主流程 */
+  loadMacro(); loadNFP(); loadNews();
   const badge = $("envBadge");
-  badge.textContent = env.cn状态 ? `🌐大环境: ${env.状态}·${env.细分} · A股${env.cn状态} QQQ${env.qqq} VOO${env.voo} 日经${env.日经} 韩国${env.韩国} · 加成×${env.加成}` : `大盘: ${env.状态} · 加成×${env.加成}`;
+  badge.textContent = env.cn状态 ? `🌐大环境: ${env.状态}·${env.细分} · A股${env.cn状态} QQQ${env.qqq} VOO${env.voo} 日经${env.日经} 韩国${env.韩国} 英国${env.英国||"🟡"} · 加成×${env.加成}` : `大盘: ${env.状态} · 加成×${env.加成}`;
   badge.className = "env-badge " + (env.状态==="顺风"?"env-bull":env.状态==="逆风"?"env-bear":env.状态==="未知"?"env-unknown":"env-shake");
   renderEnv();
 
@@ -1450,6 +1784,7 @@ async function run(){
     await Promise.all(Array.from({length:3}, worker2));
   }
   savePred(PRED);
+  trackSignals(); /* 存档今日信号，供胜率回看 */
 
   renderAll();
 
@@ -1463,6 +1798,7 @@ async function run(){
 
 /* ================= 筛选 / 排序 / 刷新 ================= */
 (function initFilters(){
+  const fTotal = $("fTotal"); if(fTotal) fTotal.textContent = FUNDS.length;
   const sectors = [...new Set(FUNDS.map(f=>f.sector))];
   sectors.forEach(s=>{ const o=document.createElement("option"); o.value=s; o.textContent=s; $("fSector").appendChild(o); });
   ["强烈买入","买入","加仓","补仓","预埋","关注","清仓","减仓","止盈","持有","观望","大涨观望","暴涨观望"].forEach(a=>{
