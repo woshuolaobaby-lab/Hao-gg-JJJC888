@@ -227,6 +227,11 @@
     <div id="sigTrackGrid"><span style="color:#8b949e">加载中…</span></div>
   </div>
 
+  <div class="panel" style="margin-bottom:14px">
+    <h3>🔥 连涨信号<small>净值连续上涨≥3天(交易日)的基金 · 第4天继续涨会自动叠成"连涨4天"，以此类推 · 按连涨天数排序 · 连涨≠追涨信号，高位连涨要防回撤</small></h3>
+    <div id="streakGrid"><span style="color:#8b949e">加载中…</span></div>
+  </div>
+
   <div class="charts-row">
     <div class="panel"><h3>机会矩阵<small>左=超跌 上=强势 · <span style="color:#00e676">● 看好</span> <span style="color:#ffa726">● 谨慎</span> · ▲买入信号 ▼卖出信号</small></h3><div id="chMatrix" class="chart"></div></div>
     <div class="panel"><h3>板块轮动热力<small>平均趋势强度 · 点击红绿条弹出该板块基金名单</small></h3><div id="chSector" class="chart"></div></div>
@@ -946,26 +951,89 @@ function renderSigTrack(){
   g.innerHTML = (chips || `<span style="color:#8b949e">信号档案已累积 ${dates.length} 天，最早一批满5天后开始显示胜率。</span>`) + (rows ? `<div style="margin-top:6px">${rows}</div>` : "");
 }
 
+/* ======== 连涨信号：净值连续上涨≥3天（第4天续涨自动叠成连涨4天，以此类推） ======== */
+function renderStreak(){
+  const g = $("streakGrid"); if(!g) return;
+  const list = [];
+  RESULTS.forEach(r=>{
+    if(r.error || !r._vals || r._vals.length<4) return;
+    const v = r._vals;
+    let streak = 0;
+    for(let i=v.length-1; i>=1; i--){
+      if(v[i] > v[i-1]) streak++; else break;
+    }
+    if(streak>=3){
+      const cum = (v[v.length-1]/v[v.length-1-streak]-1)*100;
+      list.push({code:r.代码, name:r.名称, streak, cum:+cum.toFixed(2), today:r.涨跌, 建议:r.建议, 估值显示:r.估值显示});
+    }
+  });
+  if(!list.length){ g.innerHTML = `<span style="color:#8b949e">今天没有连涨3天及以上的基金</span>`; return; }
+  list.sort((a,b)=> b.streak-a.streak || b.cum-a.cum);
+  g.innerHTML = `<div class="env-grid">` + list.slice(0,24).map(s=>{
+    const hot = s.streak>=6 ? "#f85149" : s.streak>=4 ? "#ff7b72" : "#ffa657";
+    const warn = s.估值显示>=85 ? `<div style="font-size:11px;color:#f85149;margin-top:3px">⚠ 估值极高（分位${s.估值显示}%），连涨越多越要防回撤</div>` : (s.估值显示>=70 ? `<div style="font-size:11px;color:#e3b341;margin-top:3px">估值偏高（分位${s.估值显示}%），不建议追高</div>` : "");
+    return `<div class="env-idx"><div class="nm">${s.name}<span class="mq-sub">${s.code}</span></div>
+      <div class="tr" style="color:${hot}">🔥 连涨${s.streak}天<span style="font-weight:400;font-size:12px;color:#8b949e;margin-left:5px">${s.streak}日累计 +${s.cum}%</span></div>
+      <div style="font-size:12px;color:#8b949e;margin-top:4px">今日 ${s.today>0?"+":""}${s.today}% · 信号:${s.建议}</div>${warn}</div>`;
+  }).join("") + `</div>` + (list.length>24 ? `<div style="font-size:12px;color:#8b949e;margin-top:6px">共 ${list.length} 只连涨≥3天，只显示前24只（按连涨天数排序）</div>` : "");
+}
+
 /* ======== 第二层：指数估值（真实PE/PB历史分位，数据源：蛋卷基金） ======== */
 let IDX_VAL = null; /* {指数代码: {name,pe,pe_pct,pb_pct,roe,yeild,eva}} */
-async function loadIndexVal(){
+let IDX_VAL_META = null; /* {date, stale:true|false} — stale=true 表示实时获取全失败、显示的是上次成功的缓存 */
+async function loadIndexVal(force){
   const KEY="fund_index_val";
   const today = new Date().toISOString().slice(0,10);
-  try{ const c=JSON.parse(localStorage.getItem(KEY)||"null"); if(c && c.date===today && c.data){ IDX_VAL=c.data; return; } }catch(e){}
+  let stale = null;
+  try{
+    const c=JSON.parse(localStorage.getItem(KEY)||"null");
+    if(c && c.data){
+      if(c.date===today && !force){ IDX_VAL=c.data; IDX_VAL_META={date:c.date, stale:false}; return; }
+      stale=c;
+    }
+  }catch(e){}
   const u = "https://danjuanfunds.com/djapi/index_eva/dj";
-  const tries = [u, "https://api.allorigins.win/raw?url="+encodeURIComponent(u), "https://corsproxy.io/?url="+encodeURIComponent(u)];
+  /* 蛋卷接口不允许浏览器跨域直连，6个通道轮询，每个最多等8秒，通一个就用 */
+  const tries = [
+    u,
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(u),
+    "https://api.allorigins.win/get?url="+encodeURIComponent(u),
+    "https://api.codetabs.com/v1/proxy?quest="+u,
+    "https://api.cors.lol/?url="+encodeURIComponent(u),
+    "https://r.jina.ai/"+u
+  ];
   for(const url of tries){
     try{
-      const j = await (await fetch(url)).json();
-      const items = (j.data && j.data.items) || [];
+      const ctl = new AbortController();
+      const tm = setTimeout(()=>ctl.abort(), 6000);
+      const resp = await fetch(url, {signal:ctl.signal});
+      clearTimeout(tm);
+      if(!resp.ok) continue;
+      const txt = await resp.text();
+      let j = null;
+      try{ j = JSON.parse(txt); }catch(e){
+        const m = txt.match(/\{[\s\S]*"items"[\s\S]*\}/); /* jina等文本包装：从里面抠出JSON */
+        if(m){ try{ j = JSON.parse(m[0]); }catch(e2){} }
+      }
+      if(j && typeof j.contents==="string"){ try{ j = JSON.parse(j.contents); }catch(e){ continue; } } /* allorigins get 包装 */
+      const items = (j && j.data && j.data.items) || [];
       if(items.length>10){
         IDX_VAL = {};
         items.forEach(i=>{ IDX_VAL[i.index_code] = {name:i.name, pe:i.pe||0, pe_pct:Math.round((i.pe_percentile||0)*100), pb_pct:Math.round((i.pb_percentile||0)*100), roe:i.roe?+(i.roe*100).toFixed(1):null, yeild:i.yeild?+(i.yeild*100).toFixed(2):null, eva:i.eva_type}; });
+        IDX_VAL_META = {date:today, stale:false};
         try{ localStorage.setItem(KEY, JSON.stringify({date:today, data:IDX_VAL})); }catch(e){}
         return;
       }
     }catch(e){}
   }
+  /* 6个通道全失败 → 用上次成功的缓存兜底（估值分位每天变化极小，旧几天完全够参考） */
+  if(stale){ IDX_VAL = stale.data; IDX_VAL_META = {date:stale.date, stale:true}; }
+  else { IDX_VAL = null; IDX_VAL_META = null; }
+}
+async function retryVal(){
+  const g = $("valGrid"); if(g) g.innerHTML = `<span style="color:#8b949e">正在换通道重新获取估值数据，最多等十几秒…</span>`;
+  await loadIndexVal(true);
+  renderVal();
 }
 
 /* 基金名称 → 跟踪指数（按关键字，顺序敏感） */
@@ -1050,12 +1118,13 @@ function adviceTag(a){
 /* 第二层：指数估值面板（只展示有基金跟踪的指数，按PE分位从高到低） */
 function renderVal(){
   const g = $("valGrid"); if(!g) return;
-  if(!IDX_VAL){ g.innerHTML = `<span style="color:#8b949e">估值数据获取失败（不影响其他功能，估值门槛暂用净值百分位）</span>`; return; }
+  if(!IDX_VAL){ g.innerHTML = `<span style="color:#8b949e">估值数据获取失败（不影响其他功能，估值门槛暂用净值百分位）</span> <a href="javascript:void(0)" onclick="retryVal()" style="color:#58a6ff;font-size:13px">↻ 点击重试</a>`; return; }
   const used = {};
   RESULTS.forEach(r=>{ if(r._指数代码 && IDX_VAL[r._指数代码]) used[r._指数代码] = IDX_VAL[r._指数代码]; });
   const list = Object.keys(used).map(c=>({code:c, ...used[c]})).sort((a,b)=>b.pe_pct-a.pe_pct);
   if(!list.length){ g.innerHTML = `<span style="color:#8b949e">加载基金后显示</span>`; return; }
-  g.innerHTML = `<div class="env-grid">` + list.map(v=>{
+  const staleNote = (IDX_VAL_META && IDX_VAL_META.stale) ? `<div style="border:1px solid #e3b34155;background:#e3b34114;color:#e3b341;font-size:12px;padding:6px 10px;border-radius:6px;margin-bottom:8px">⚠️ 实时获取失败，显示的是 ${IDX_VAL_META.date} 的缓存数据（估值分位每天变化极小，旧几天不影响参考） <a href="javascript:void(0)" onclick="retryVal()" style="color:#58a6ff">↻ 重试</a></div>` : "";
+  g.innerHTML = staleNote + `<div class="env-grid">` + list.map(v=>{
     const st = v.pe_pct>=85 ? ["极高估","#f85149"] : v.pe_pct>=70 ? ["偏高估","#ffa657"] : v.pe_pct<=15 ? ["极低估","#58a6ff"] : v.pe_pct<=30 ? ["偏低估","#3fb950"] : ["适中","#8b949e"];
     return `<div class="env-idx"><div class="nm">${v.name}</div>
       <div class="tr" style="color:${st[1]}">${st[0]}<span style="font-weight:400;font-size:12px;color:#8b949e;margin-left:5px">PE分位 ${v.pe_pct}%</span></div>
@@ -1694,7 +1763,7 @@ window.showSector = function(sector){
 "use strict";
 /* ================= 主流程 ================= */
 function renderAll(){
-  renderCards(); renderMatrix(); renderSector(); renderTopList(); renderTable(); renderEnv(); renderVal(); renderETF(); renderRadar(); renderHoldings(); renderSigTrack();
+  renderCards(); renderMatrix(); renderSector(); renderTopList(); renderTable(); renderEnv(); renderVal(); renderETF(); renderRadar(); renderHoldings(); renderSigTrack(); renderStreak();
 }
 
 async function run(){
@@ -1702,6 +1771,7 @@ async function run(){
   btn.disabled = true; btn.textContent = "加载中…";
   $("pbar").style.width = "2%";
   RESULTS = []; FAILED = [];
+  const valPromise = loadIndexVal(); /* 估值与大盘/基金并行加载，不占后面时间 */
 
   /* 第一层：先取市场大环境（A股4指数 + 美股QQQ/VOO） */
   $("loadStatus").textContent = "获取市场大环境（A股+美股+亚太+欧洲）…";
@@ -1730,8 +1800,8 @@ async function run(){
     const sh = bySec["000001"];
     if(sh && sh.f2!=null) ENV_PT["SH"] = {pt:sh.f2, chg:sh.f3, nm:sh.f14};
   }catch(e){}
-  /* 第二层：取指数估值（PE/PB分位），供分析时并入估值门槛 */
-  await loadIndexVal();
+  /* 第二层：取指数估值（PE/PB分位），供分析时并入估值门槛（开头已并行发起，这里只等结果） */
+  await valPromise;
   /* 第三层：取ETF实时行情（量比+主力资金） */
   await loadETFQuotes();
   /* 宏观参考 + 财经快讯：独立通道，不阻塞主流程 */
